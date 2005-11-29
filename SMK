@@ -1,0 +1,11 @@
+g = smk.make_program ('g', srcs = ['parse.c'])
+
+smk.env.all.depends (g)
+
+smk.subproject ('ulib')
+
+# Local variables:
+# mode: python
+# indent-tabs-mode: nil
+# arch-tag: 9f0690b4-5972-424d-9e46-1894f9bdb0bd
+# End:
