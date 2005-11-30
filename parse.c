@@ -23,28 +23,48 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-/* Current line number.  */
-static unsigned int lineno = 1;
+#include "symtab.h"
+#include "grammar.h"
+
+/* Parser data.  */
+struct parse_ctx
+{
+  /* Input file name.  */
+  const char *name;
+
+  /* Input file stream.  */
+  FILE *in;
+
+  /* Current line number.  */
+  unsigned int lineno;
+
+  /* Current token.  */
+  int token;
+
+  /* Current token semantic value.  */
+  union
+  {
+    int chr;
+    char *word;
+  } value;
+
+  /* Main symbol table. */
+  xg_symtab symbol_table;
+};
+typedef struct parse_ctx parse_ctx;
 
 /* Error reporting.  */
 static void
-error (const char *fmt, ...)
+error (parse_ctx *ctx, const char *fmt, ...)
 {
   va_list ap;
 
-  fprintf (stderr, "<input> : %d : ", lineno);
+  fprintf (stderr, "%s:%d: ERROR: ", ctx->name, ctx->lineno);
   va_start (ap, fmt);
   vfprintf (stderr, fmt, ap);
   va_end (ap);
   fputc ('\n', stderr);
 }
-
-/* Token semantic value type.  */
-union sval
-{
-  int token;
-  char *word;
-};
 
 /* Token encoding.  */
 #define TOKEN_WORD 257
@@ -52,11 +72,11 @@ union sval
 
 /* Lexical analyzer.  */
 static int
-handle_escape (FILE *in)
+scan_escape (parse_ctx *ctx)
 {
   int ch;
 
-  ch = getc (in);
+  ch = getc (ctx->in);
   switch (ch)
     {
     case 'n':
@@ -69,65 +89,46 @@ handle_escape (FILE *in)
       return '\\';
 
     default:
-      error ("Invalid escape sequence");
+      error (ctx, "Invalid escape sequence");
       return -1;
     }
 }
 
+/* Scan a token literal: '<char>'.  */
 static int
-getlex (FILE *in, union sval *value)
+scan_token_literal (parse_ctx *ctx)
 {
-  int ch;
+  int ch, ch1;
+
+  ch = getc (ctx->in);
+  if (ch == EOF)
+    {
+      error (ctx, "Invalid token literal");
+      return -1;
+    }
+
+  if (ch == '\\' && (ch = scan_escape (ctx)) == -1)
+    return -1;
+
+  ch1 = getc (ctx->in);
+  if (ch1 != '\'')
+    {
+      error (ctx, "Invalid token literal");
+      return -1;
+    }
+
+  ctx->value.chr = ch;
+  ctx->token = TOKEN_LITERAL;
+  return 0;
+}
+
+/* Scan a word.  */
+static void
+scan_word (parse_ctx *ctx, int ch)
+{
   char *word;
-  unsigned int n, cnt;
+  unsigned int cnt, n;
 
-  /* Skip whitespace.  */
-  do
-    {
-      ch = getc (in);
-      if (ch == '\n')
-        ++lineno;
-    }
-  while (isspace (ch));
-
-  switch (ch)
-    {
-    case EOF:
-      return 0;
-
-    case ':':
-    case '|':
-    case ';':
-      return ch;
-    }
-
-  if (ch == '\'')
-    {
-      /* Scan a token literal.  */
-      int ch1;
-
-      ch = getc (in);
-      if (ch == EOF)
-        {
-          error ("Invalid token literal");
-          return -1;
-        }
-
-      if (ch == '\\' && (ch = handle_escape (in)) == -1)
-        return -1;
-
-      ch1 = getc (in);
-      if (ch1 != '\'')
-        {
-          error ("Invalid token literal");
-          return -1;
-        }
-
-      value->token = ch;
-      return TOKEN_LITERAL;
-    }
-
-  /* Scan word.  */
   cnt = n = 0;
   word = 0;
   while (ch != EOF && !isspace (ch))
@@ -138,85 +139,131 @@ getlex (FILE *in, union sval *value)
           word = realloc (word, n);
         }
       word [cnt++] = ch;
-      ch = getc (in);
+      ch = getc (ctx->in);
+    }
+  ungetc (ch, ctx->in);
+
+  ctx->value.word = word;
+  ctx->token = TOKEN_WORD;
+}
+
+static int
+getlex (parse_ctx *ctx)
+{
+  int ch;
+
+  /* Skip whitespace.  */
+  do
+    {
+      ch = getc (ctx->in);
+      if (ch == '\n')
+        ++ctx->lineno;
+    }
+  while (isspace (ch));
+
+  /* Check for single-character tokens and EOF.  */
+  switch (ch)
+    {
+    case EOF:
+      ctx->token = 0;
+      return 0;
+
+    case ':':
+    case '|':
+    case ';':
+      ctx->token = ch;
+      return 0;
     }
 
-  value->word = word;
-  return TOKEN_WORD;
+  if (ch == '\'')
+    return scan_token_literal (ctx);
+  else if (isalpha (ch))
+    {
+      scan_word (ctx, ch);
+      return 0;
+    }
+  else
+    {
+      error (ctx, "Invalid token");
+      return -1;
+    }
 }
 
 /* Parser routines.  */
 
-/* XG grammar definition grammar.  
+/* XG grammar definition grammar.
 
    gram: prod | gram prod
 
-   prod: WORD ':' rhs ';'
+   prod: word ':' rhs ';'
 
    rhs: symbol-list
       | rhs '|' symbol-list
 
    symbol-list: symbol | symbol-list symbol
 
-   symbol: WORD | token-literal
+   symbol: word | token-literal
 */
 
 static int
-parse_symbol_list (FILE *in, int token, union sval *val)
+parse_symbol_list (parse_ctx *ctx)
 {
-  while (token == TOKEN_WORD || token == TOKEN_LITERAL)
-    token = getlex (in, val);
-
-  return token;
-}
-
-static int
-parse_rhs (FILE *in, const char *lhs, int token, union sval *val)
-{
-  token = parse_symbol_list (in, token, val);
-  while (token == '|')
+  while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
     {
-      token = getlex (in, val);
-      if (token == -1)
+      if (getlex (ctx) < 0)
         return -1;
-      token = parse_symbol_list (in, token, val);
     }
 
-  return token;
+  return 0;
 }
 
 static int
-parse_prod (FILE *in, int token, union sval *val)
+parse_rhs (parse_ctx *ctx, const char *lhs __attribute__ ((unused)))
+{
+  if (parse_symbol_list (ctx) < 0)
+    return -1;
+
+  while (ctx->token == '|')
+    {
+      if (getlex (ctx) < 0 || parse_symbol_list (ctx) < 0)
+        return -1;
+    }
+
+  return 0;
+}
+
+static int
+parse_prod (parse_ctx *ctx)
 {
   char *lhs;
 
-  if (token != TOKEN_WORD)
+  if (ctx->token != TOKEN_WORD)
     {
-      error ("Invalid production definition -- expected WORD");
+      error (ctx, "Invalid production definition -- expected WORD");
       return -1;
     }
 
-  lhs = val->word;
-  token = getlex (in, val);
-  
-  if (token != ':')
+  lhs = ctx->value.word;
+  if (getlex (ctx) < 0 || ctx->token != ':')
     {
-      error ("Invalid production definition -- expected : (colon)");
+      error (ctx, "Invalid production definition -- expected : (colon)");
       goto error;
     }
-  token = getlex (in, val);
 
-  token = parse_rhs (in, lhs, token, val);
+  if (getlex (ctx) < 0 || parse_rhs (ctx, lhs) < 0)
+    goto error;
 
-  if (token != ';')
+  if (ctx->token != ';')
     {
-      error ("Invalid production definition -- expected ; (semicolon)");
+      error (ctx, "Invalid production definition -- expected ; (semicolon)");
       goto error;
     }
-  token = getlex (in, val);
-  
+
+  if (getlex (ctx) < 0)
+    goto error;
+
   free (lhs);
-  return token;
+  return 0;
 
 error:
   free (lhs);
@@ -224,47 +271,41 @@ error:
 }
 
 static int
-parse_gram (FILE *in)
+parse_gram (parse_ctx *ctx)
 {
-  int token;
-  union sval val;
-
-  token = getlex  (in, &val);
-  while (token && token != -1)
-    token = parse_prod (in, token, &val);
-
-  return token;
-}
-
-static int
-usage ()
-{
-  fprintf (stderr, "usage: xg <filename>\n");
-  return -1;
-}
-
-int
-main (int argc, char *argv [])
-{
-  FILE *in;
-
-  if (argc != 2)
-    return usage ();
-
-  in = fopen (argv [1], "rt");
-  if (in == 0)
+  if (getlex  (ctx) < 0)
     return -1;
 
-  if (parse_gram (in) == 0)
+  while (ctx->token > 0)
     {
-      puts ("success");
+      if (parse_prod (ctx) < 0)
+        return -1;
+    }
+
+  return (ctx->token == 0) ? 0 : -1;
+}
+
+xg_grammar *
+xg_grammar_read (const char *name)
+{
+  parse_ctx ctx;
+
+  ctx.name = name;
+  ctx.in = fopen (name, "r");
+  if (ctx.in == 0)
+    {
+      fprintf (stderr, "xg : Cannot open input file ``%s''\n", name);
       return 0;
     }
+  ctx.lineno = 1;
+  ctx.token = 0;
+
+  if (parse_gram (&ctx) == 0)
+    puts ("Success");
   else
-    {
-      puts ("failure");
-      return -1;
-    }
+    puts ("Failure");
+
+  return 0;
 }
 
 /*
