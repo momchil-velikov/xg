@@ -49,7 +49,7 @@ struct parse_ctx
   } value;
 
   /* Main symbol table. */
-  xg_symtab symbol_table;
+  xg_symtab symtab;
 };
 typedef struct parse_ctx parse_ctx;
 
@@ -64,6 +64,13 @@ error (parse_ctx *ctx, const char *fmt, ...)
   vfprintf (stderr, fmt, ap);
   va_end (ap);
   fputc ('\n', stderr);
+}
+
+/* Out of memory error.  */
+static void
+error_oom ()
+{
+  fprintf (stderr, "xg: Out of memory\n");
 }
 
 /* Token encoding.  */
@@ -206,7 +213,7 @@ getlex (parse_ctx *ctx)
 */
 
 static int
-parse_symbol_list (parse_ctx *ctx)
+parse_symbol_list (parse_ctx *ctx, xg_production *prod)
 {
   while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
     {
@@ -236,14 +243,29 @@ static int
 parse_prod (parse_ctx *ctx)
 {
   char *lhs;
+  xg_production *prod;
+  xg_symbol_def *lhs;
 
+  /* Match the left hand side.  */
   if (ctx->token != TOKEN_WORD)
     {
       error (ctx, "Invalid production definition -- expected WORD");
       return -1;
     }
 
-  lhs = ctx->value.word;
+  /* Look if the symbol was already defined.  */
+  lhs = xg_symtab_lookup (&ctx->symtab, ctx->value.word);
+  if (lhs == 0)
+    {
+      lhs = xg_symbol_new (ctx->value.word);
+      if (lhs == 0)
+        {
+          free (ctx->value.word);
+          return -1;
+        }
+    }
+  lhs->terminal = 0;
+
   if (getlex (ctx) < 0 || ctx->token != ':')
     {
       error (ctx, "Invalid production definition -- expected : (colon)");
@@ -288,24 +310,58 @@ parse_gram (parse_ctx *ctx)
 xg_grammar *
 xg_grammar_read (const char *name)
 {
+  int sts;
   parse_ctx ctx;
+  xg_grammar *gram;
 
+  /* Initialize the parser context.  */
   ctx.name = name;
-  ctx.in = fopen (name, "r");
-  if (ctx.in == 0)
+  ctx.lineno = 1;
+  ctx.token = 0;
+
+  /* Open the input file stream.  */
+  if ((ctx.in = fopen (name, "r")) != 0)
+    {
+      /* Create the symbol table.  */
+      if (xg_symtab_init (&ctx.symtab) == 0)
+        {
+          /* Create the grammar object.  */
+          if ((ctx.gram = xg_grammar_new ()) != 0)
+            {
+              /* Reserve the first production for the standard S'->S
+                 augmentation.  */
+              if (xg_grammar_add_production (&ctx.gram, 0) == 0)
+                {
+                  /* Parse the grammar description.  */
+                  sts = parse_gram (&ctx);
+                }
+              else
+                {
+                  error_oom ();
+                  xg_grammar_del (&ctx.gram);
+                }
+            }
+          else
+            error_oom ();
+          xg_symtab_destroy (&ctx.symtab);
+        }
+      else
+        error_oom ();
+      fclose (ctx.in);
+    }
+  else
     {
       fprintf (stderr, "xg : Cannot open input file ``%s''\n", name);
       return 0;
     }
-  ctx.lineno = 1;
-  ctx.token = 0;
 
-  if (parse_gram (&ctx) == 0)
-    puts ("Success");
+  if (sts == 0)
+    return ctx.gram;
   else
-    puts ("Failure");
-
-  return 0;
+    {
+      xg_grammar_del (ctx.gram);
+      return 0;
+    }
 }
 
 /*
