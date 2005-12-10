@@ -68,10 +68,10 @@ xg_symtab_insert (xg_symtab *tab, xg_symbol_def *def)
 xg_symbol_def *
 xg_symtab_lookup (const xg_symtab *tab, const char *name)
 {
-  xg_symbol_def *def;
-  def->name = (char *) name;
+  xg_symbol_def def;
+  def.name = (char *) name;
 
-  return (xg_symbol_def *) ulib_hash_lookup (tab, &def->list);
+  return (xg_symbol_def *) ulib_hash_lookup (tab, &def.list);
 }
 END_DECLS
 

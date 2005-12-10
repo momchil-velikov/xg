@@ -22,9 +22,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
-
 #include "symtab.h"
 #include "grammar.h"
+#include "xg.h"
+#include <ulib/cache.h>
 
 /* Parser data.  */
 struct parse_ctx
@@ -50,6 +51,9 @@ struct parse_ctx
 
   /* Main symbol table. */
   xg_symtab symtab;
+
+  /* The build-in-progress grammar. */
+  xg_grammar *gram;
 };
 typedef struct parse_ctx parse_ctx;
 
@@ -64,13 +68,6 @@ error (parse_ctx *ctx, const char *fmt, ...)
   vfprintf (stderr, fmt, ap);
   va_end (ap);
   fputc ('\n', stderr);
-}
-
-/* Out of memory error.  */
-static void
-error_oom ()
-{
-  fprintf (stderr, "xg: Out of memory\n");
 }
 
 /* Token encoding.  */
@@ -140,14 +137,15 @@ scan_word (parse_ctx *ctx, int ch)
   word = 0;
   while (ch != EOF && !isspace (ch))
     {
-      if (cnt == n)
+      if (cnt + 1 >= n)
         {
           n += 10;
-          word = realloc (word, n);
+          word = xg_realloc (word, n);
         }
       word [cnt++] = ch;
       ch = getc (ctx->in);
     }
+  word [cnt++] = '\0';
   ungetc (ch, ctx->in);
 
   ctx->value.word = word;
@@ -212,11 +210,49 @@ getlex (parse_ctx *ctx)
    symbol: word | token-literal
 */
 
+/* Find or create a symbol with name NAME.  In either case the
+   function consumes the NAME parameter.  */
+static xg_symbol_def *
+find_or_create_symbol (parse_ctx *ctx, char *name)
+{
+  xg_symbol_def *def;
+
+  if ((def = xg_symtab_lookup (&ctx->symtab, name)) == 0)
+    {
+      if ((def = xg_symbol_new (name)) == 0)
+        {
+          xg_free (name);
+          return 0;
+        }
+
+      xg_symtab_insert (&ctx->symtab, def);
+      if ((def->code = xg_grammar_add_symbol (ctx->gram, def)) < 0)
+        return 0;
+    }
+  else
+    xg_free (name);
+
+  return def;
+}
+
 static int
 parse_symbol_list (parse_ctx *ctx, xg_production *prod)
 {
+  xg_symbol_def *def;
   while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
     {
+      if (ctx->token == TOKEN_WORD)
+        {
+          if ((def = find_or_create_symbol (ctx, ctx->value.word)) == 0
+              || xg_production_add (prod, def->code) < 0)
+            return -1;
+        }
+      else /* ctx->token == TOKEN_LITERAL */
+        {
+          if (xg_production_add (prod, ctx->value.chr) < 0)
+            return -1;
+        }
+
       if (getlex (ctx) < 0)
         return -1;
     }
@@ -225,14 +261,26 @@ parse_symbol_list (parse_ctx *ctx, xg_production *prod)
 }
 
 static int
-parse_rhs (parse_ctx *ctx, const char *lhs __attribute__ ((unused)))
+parse_rhs (parse_ctx *ctx, xg_symbol_def *lhs)
 {
-  if (parse_symbol_list (ctx) < 0)
+  xg_production *prod;
+
+  /* Create a production for the first alternaive and parse its right
+     hand side.  Add the production to the grammar.  */
+  if ((prod = xg_production_new (lhs->code)) == 0
+      || parse_symbol_list (ctx, prod) < 0
+      || xg_grammar_add_production (ctx->gram, prod) < 0)
     return -1;
 
   while (ctx->token == '|')
     {
-      if (getlex (ctx) < 0 || parse_symbol_list (ctx) < 0)
+      /* Create a production for subsequent alternatives and parse
+         their right hand sides.  Add each new production to the
+         grammar.  */
+      if (getlex (ctx) < 0
+          || (prod = xg_production_new (lhs->code)) == 0
+          || parse_symbol_list (ctx, prod) < 0
+          || xg_grammar_add_production (ctx->gram, prod) < 0)
         return -1;
     }
 
@@ -242,8 +290,6 @@ parse_rhs (parse_ctx *ctx, const char *lhs __attribute__ ((unused)))
 static int
 parse_prod (parse_ctx *ctx)
 {
-  char *lhs;
-  xg_production *prod;
   xg_symbol_def *lhs;
 
   /* Match the left hand side.  */
@@ -253,43 +299,30 @@ parse_prod (parse_ctx *ctx)
       return -1;
     }
 
-  /* Look if the symbol was already defined.  */
-  lhs = xg_symtab_lookup (&ctx->symtab, ctx->value.word);
-  if (lhs == 0)
-    {
-      lhs = xg_symbol_new (ctx->value.word);
-      if (lhs == 0)
-        {
-          free (ctx->value.word);
-          return -1;
-        }
-    }
+  /* Find or create the left hand side symbol.  */
+  if ((lhs = find_or_create_symbol (ctx, ctx->value.word)) == 0)
+    return -1;
   lhs->terminal = 0;
 
   if (getlex (ctx) < 0 || ctx->token != ':')
     {
       error (ctx, "Invalid production definition -- expected : (colon)");
-      goto error;
+      return -1;
     }
 
   if (getlex (ctx) < 0 || parse_rhs (ctx, lhs) < 0)
-    goto error;
+    return -1;
 
   if (ctx->token != ';')
     {
       error (ctx, "Invalid production definition -- expected ; (semicolon)");
-      goto error;
+      return -1;
     }
 
   if (getlex (ctx) < 0)
-    goto error;
+    return -1;
 
-  free (lhs);
   return 0;
-
-error:
-  free (lhs);
-  return -1;
 }
 
 static int
@@ -312,7 +345,6 @@ xg_grammar_read (const char *name)
 {
   int sts;
   parse_ctx ctx;
-  xg_grammar *gram;
 
   /* Initialize the parser context.  */
   ctx.name = name;
@@ -330,23 +362,16 @@ xg_grammar_read (const char *name)
             {
               /* Reserve the first production for the standard S'->S
                  augmentation.  */
-              if (xg_grammar_add_production (&ctx.gram, 0) == 0)
+              if (xg_grammar_add_production (ctx.gram, 0) == 0)
                 {
                   /* Parse the grammar description.  */
                   sts = parse_gram (&ctx);
                 }
               else
-                {
-                  error_oom ();
-                  xg_grammar_del (&ctx.gram);
-                }
+                xg_grammar_del (ctx.gram);
             }
-          else
-            error_oom ();
           xg_symtab_destroy (&ctx.symtab);
         }
-      else
-        error_oom ();
       fclose (ctx.in);
     }
   else
@@ -360,6 +385,7 @@ xg_grammar_read (const char *name)
   else
     {
       xg_grammar_del (ctx.gram);
+      ulib_gcrun ();
       return 0;
     }
 }

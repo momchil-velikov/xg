@@ -25,10 +25,12 @@
 #include <ulib/vector.h>
 #include <ulib/list.h>
 
+#include <stdio.h>
+
 BEGIN_DECLS
 
 /* Symbol code.  */
-typedef unsigned int xg_symbol;
+typedef int xg_symbol;
 
 /* Max literal token code.  */
 #define XG_TOKEN_LITERAL_MAX 255
@@ -46,7 +48,7 @@ struct xg_symbol_def
   char *name;
 
   /* Terminal flag.  */
-  int terminal : 1;
+  unsigned int terminal : 1;
 };
 typedef struct xg_symbol_def xg_symbol_def;
 
@@ -79,11 +81,22 @@ void xg_production_del (xg_production *);
 /* Append a symbol to the right hand side.  */
 int xg_production_add (xg_production *, xg_symbol);
 
+/* Get the number of the symbols at the right hand side of a
+   production.  */
+int xg_production_length (xg_production *);
+
+/* Get the Nth symbol from the right hand side of a production.  */
+xg_symbol xg_production_get_symbol (xg_production *, unsigned int n);
+
+
 /* Grammar.  */
 struct xg_grammar
 {
   /* Start symbol code.  */
   xg_symbol start;
+
+  /* Number of token literal symbols.  */
+  unsigned int ntoks;
 
   /* All symbol definitions.  */
   ulib_vector syms;
@@ -102,8 +115,28 @@ xg_grammar *xg_grammar_read (const char *);
 /* Delete a grammar structure.  */
 void xg_grammar_del (xg_grammar *);
 
+/* Add a symbol definition to a grammat.  Return symbol index or
+   negative on error.  */
+xg_symbol xg_grammar_add_symbol (xg_grammar *, xg_symbol_def *);
+
+/* Get the symbol definition for the symbol CODE.  */
+xg_symbol_def *xg_grammar_get_symbol (xg_grammar *, xg_symbol code);
+
 /* Add a production to the grammar.  */
 int xg_grammar_add_production (xg_grammar *, xg_production *);
+
+/* Get production count.  */
+int xg_grammar_production_count (xg_grammar *);
+
+/* Get Nth production.  */
+xg_production *xg_grammar_get_production (xg_grammar *, unsigned int n);
+
+/* Display a debugging dump of the grammar.  */
+void xg_grammar_debug (FILE *, xg_grammar *);
+
+
+/* Initialize grammars memory management.  */
+int xg_init_grammar_caches (void);
 
 END_DECLS
 #endif /* xg__grammar_h */

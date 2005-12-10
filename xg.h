@@ -1,4 +1,4 @@
-/* main.c - main program
+/* xg.h.c - miscelaneous definitions
  *
  * Copyright (C) 2005 Momchil Velikov
  *
@@ -18,30 +18,32 @@
  * along with XG; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include <stdio.h>
-#include "grammar.h"
+#ifndef xg__xg_h
+#define xg__xg_h 1
 
-static int
-usage ()
-{
-  fprintf (stderr, "usage: xg <filename>\n");
-  return -1;
-}
+#include <ulib/defs.h>
+#include <ulib/log.h>
+#include <stdlib.h>
 
-int
-main (int argc, char *argv [])
-{
-  if (argc != 2)
-    return usage ();
+BEGIN_DECLS
 
-  xg_grammar_read (argv [1]);
-  return 0;
-}
+/* XG message log.  */
+extern ulib_log *xg_log;
+
+/* Logging memory allocation functions.  */
+void *xg_malloc (size_t);
+void *xg_calloc (size_t, size_t);
+void *xg_realloc (void *, size_t);
+static inline void xg_free (void *ptr) { free (ptr); }
+
+END_DECLS
+
+#endif /*  xg__xg_h */
 
 /*
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 1c5b50b4-ff60-4a95-a943-365b67baf14a
+ * arch-tag: 2f4686a9-81d9-4e8e-9e15-9dceb5d42229
  * End:
  */
