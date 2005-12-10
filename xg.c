@@ -34,8 +34,8 @@ xg_malloc (size_t sz)
 
   ptr = malloc (sz);
   if (ptr == 0 && sz != 0)
-    ulib_log_message_add (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                          (unsigned long) sz);
+    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
+                     (unsigned long) sz);
   return ptr;
 }
 
@@ -46,8 +46,8 @@ xg_calloc (size_t n, size_t sz)
   
   ptr = calloc (n, sz);
   if (ptr == 0 && n * sz != 0)
-    ulib_log_message_add (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                          (unsigned long) n * sz);
+    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
+                     (unsigned long) n * sz);
   return ptr;
 }
 
@@ -58,8 +58,8 @@ xg_realloc (void *oldptr, size_t sz)
 
   ptr = realloc (oldptr, sz);
   if (ptr == 0 && sz != 0)
-    ulib_log_message_add (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                          (unsigned long) sz);
+    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
+                     (unsigned long) sz);
   return ptr;
 }
 
@@ -90,14 +90,14 @@ main (int argc, char *argv [])
   /* Initialize memory management.  */
   if (xg_init_grammar_caches () < 0)
     {
-      ulib_log_print (xg_log, stderr);
+      ulib_log_write (xg_log, stderr);
       return -1;
     }
 
   g = xg_grammar_read (argv [1]);
   if (g == 0)
     {
-      ulib_log_print (xg_log, stderr);
+      ulib_log_write (xg_log, stderr);
       return -1;
     }
   else

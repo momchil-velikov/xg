@@ -9,7 +9,6 @@ expr/no-commas :
     |   expr/no-commas '*' expr/no-commas
     ;       
 
-
 stmt :
         expr
     |   expr '=' expr
@@ -19,4 +18,3 @@ stmt-list :
         stmt ';'
     |   stmt-list stmt ';'
     ;
-

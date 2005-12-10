@@ -33,7 +33,7 @@ xg_symbol_new (char *name)
 
   def = ulib_cache_alloc (symbol_def_cache);
   if (def == 0)
-    ulib_log_message_add (xg_log, "ERROR: Unable to allocate a symbol");
+    ulib_log_printf (xg_log, "ERROR: Unable to allocate a symbol");
   else
     {
       def->code = 0;
@@ -68,11 +68,11 @@ xg_production_new (xg_symbol lhs)
                             ULIB_GROWTH_SCALE, 2, 0) == 0)
         return prod;
 
-      ulib_log_message_add (xg_log, "ERROR: Unable to create production rhs");
+      ulib_log_printf (xg_log, "ERROR: Unable to create production rhs");
       return 0;
     }
 
-  ulib_log_message_add (xg_log, "ERROR: Unable to allocate a production");
+  ulib_log_printf (xg_log, "ERROR: Unable to allocate a production");
   return 0;
 }
 
@@ -84,7 +84,7 @@ production_ctor (xg_production *prod, unsigned int sz __attribute__ ((unused)))
                         ULIB_GROWTH_SCALE, 2, 0) == 0)
     return 0;
 
-  ulib_log_message_add (xg_log, "ERROR: Unable to create production rhs");
+  ulib_log_printf (xg_log, "ERROR: Unable to create production rhs");
   return -1;
 }
 
@@ -108,7 +108,7 @@ xg_production_add (xg_production *prod, xg_symbol sym)
   int sts;
 
   if ((sts = ulib_vector_append (&prod->rhs, &sym)) != 0)
-    ulib_log_message_add (xg_log, "ERROR: Unable to extend production rhs");
+    ulib_log_printf (xg_log, "ERROR: Unable to extend production rhs");
   return sts;
 }
 
@@ -184,7 +184,7 @@ xg_grammar_new ()
       xg_free (g);
     }
 
-  ulib_log_message_add (xg_log, "ERROR: Unable to allocate a grammar");
+  ulib_log_printf (xg_log, "ERROR: Unable to allocate a grammar");
   return 0;
 }
 
@@ -205,7 +205,7 @@ xg_grammar_add_symbol (xg_grammar *g, xg_symbol_def *def)
 {
   if (ulib_vector_append_ptr (&g->syms, def) < 0)
     {
-      ulib_log_message_add (xg_log, "ERROR: Unable to add a symbol");
+      ulib_log_printf (xg_log, "ERROR: Unable to add a symbol");
       return -1;
     }
 
@@ -260,11 +260,11 @@ xg_init_grammar_caches (void)
       if (production_cache != 0)
         return 0;
       else
-        ulib_log_message_add (xg_log,
-                              "ERROR: Unable to create the production cache");
+        ulib_log_printf (xg_log,
+                         "ERROR: Unable to create the production cache");
     }
   else
-    ulib_log_message_add (xg_log, "ERROR: Unable to create the symbols cache");
+    ulib_log_printf (xg_log, "ERROR: Unable to create the symbols cache");
 
   return -1;
 }

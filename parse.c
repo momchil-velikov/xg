@@ -58,23 +58,42 @@ struct parse_ctx
 typedef struct parse_ctx parse_ctx;
 
 /* Error reporting.  */
-static void
-error (parse_ctx *ctx, const char *fmt, ...)
-{
-  va_list ap;
+#define errorv(ctx, fmt, ...)                           \
+  ulib_log_printf (xg_log, "%s:%d: ERROR: " fmt,        \
+                   ctx->name, ctx->lineno, __VA_ARGS__)
 
-  fprintf (stderr, "%s:%d: ERROR: ", ctx->name, ctx->lineno);
-  va_start (ap, fmt);
-  vfprintf (stderr, fmt, ap);
-  va_end (ap);
-  fputc ('\n', stderr);
-}
+#define error(ctx, fmt, ...)                                            \
+  ulib_log_printf (xg_log, "%s:%d: ERROR: " fmt, ctx->name, ctx->lineno)
 
 /* Token encoding.  */
 #define TOKEN_WORD 257
 #define TOKEN_LITERAL 258
 
 /* Lexical analyzer.  */
+static int
+skip_comment (parse_ctx *ctx)
+{
+  int ch;
+
+  while ((ch = getc (ctx->in)) != EOF)
+    {
+      if (ch == '\n')
+        ++ctx->lineno;
+      else if (ch == '*')
+        {
+          if ((ch = getc (ctx->in)) == EOF)
+            break;
+          
+          if (ch == '/')
+            /* End of the comment found.  */
+            return 0;
+        }
+    }
+
+  error (ctx, "End of file within a comment");
+  return -1;
+}
+
 static int
 scan_escape (parse_ctx *ctx)
 {
@@ -126,6 +145,7 @@ scan_token_literal (parse_ctx *ctx)
   return 0;
 }
 
+
 /* Scan a word.  */
 static void
 scan_word (parse_ctx *ctx, int ch)
@@ -163,6 +183,21 @@ getlex (parse_ctx *ctx)
       ch = getc (ctx->in);
       if (ch == '\n')
         ++ctx->lineno;
+      else if (ch == '/')
+        {
+          ch = getc (ctx->in);
+          if (ch == '*')
+            {
+              if (skip_comment (ctx) < 0)
+                return -1;
+              ch = ' ';
+            }
+          else
+            {
+              ungetc (ch, ctx->in);;
+              ch = '/';
+            }
+        }
     }
   while (isspace (ch));
 
@@ -189,7 +224,7 @@ getlex (parse_ctx *ctx)
     }
   else
     {
-      error (ctx, "Invalid token");
+      error (ctx, "Invalid token ``%c''", ch);
       return -1;
     }
 }
@@ -376,7 +411,7 @@ xg_grammar_read (const char *name)
     }
   else
     {
-      fprintf (stderr, "xg : Cannot open input file ``%s''\n", name);
+      ulib_log_printf (xg_log, "Cannot open input file ``%s''", name);
       return 0;
     }
 
