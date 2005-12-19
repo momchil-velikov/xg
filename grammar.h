@@ -24,6 +24,7 @@
 #include <ulib/defs.h>
 #include <ulib/vector.h>
 #include <ulib/list.h>
+#include <ulib/bitset.h>
 
 #include <stdio.h>
 
@@ -34,6 +35,18 @@ typedef int xg_symbol;
 
 /* Max literal token code.  */
 #define XG_TOKEN_LITERAL_MAX 255
+
+/* End of input marker code.  */
+#define XG_EOF 0
+
+/* Epsilon (empty sequence) code.  */
+#define XG_EPSILON 1
+
+/* A terminal set, containing only the empty symbol.  */
+extern const ulib_bitset *xg_epsilon_set;
+
+/* A terminal set, containing only the end of input symbol.  */
+extern const ulib_bitset *xg_eof_set;
 
 /* Grammar symbol definition.  */
 struct xg_symbol_def
@@ -46,6 +59,12 @@ struct xg_symbol_def
 
   /* Symbol name.  */
   char *name;
+
+  /* FIRST set (for non-terminal symbols).  */
+  ulib_bitset first;
+
+  /* FOLLOW set (for non-terminal symbols).  */
+  ulib_bitset follow;
 
   /* Terminal flag.  */
   unsigned int terminal : 1;
@@ -83,10 +102,10 @@ int xg_production_add (xg_production *, xg_symbol);
 
 /* Get the number of the symbols at the right hand side of a
    production.  */
-int xg_production_length (xg_production *);
+unsigned int xg_production_length (const xg_production *);
 
 /* Get the Nth symbol from the right hand side of a production.  */
-xg_symbol xg_production_get_symbol (xg_production *, unsigned int n);
+xg_symbol xg_production_get_symbol (const xg_production *, unsigned int n);
 
 
 /* Grammar.  */
@@ -94,9 +113,6 @@ struct xg_grammar
 {
   /* Start symbol code.  */
   xg_symbol start;
-
-  /* Number of token literal symbols.  */
-  unsigned int ntoks;
 
   /* All symbol definitions.  */
   ulib_vector syms;
@@ -115,28 +131,34 @@ xg_grammar *xg_grammar_read (const char *);
 /* Delete a grammar structure.  */
 void xg_grammar_del (xg_grammar *);
 
-/* Add a symbol definition to a grammat.  Return symbol index or
+/* Add a symbol definition to a grammar.  Return symbol index or
    negative on error.  */
 xg_symbol xg_grammar_add_symbol (xg_grammar *, xg_symbol_def *);
 
 /* Get the symbol definition for the symbol CODE.  */
-xg_symbol_def *xg_grammar_get_symbol (xg_grammar *, xg_symbol code);
+xg_symbol_def *xg_grammar_get_symbol (const xg_grammar *, xg_symbol code);
 
 /* Add a production to the grammar.  */
 int xg_grammar_add_production (xg_grammar *, xg_production *);
 
 /* Get production count.  */
-int xg_grammar_production_count (xg_grammar *);
+unsigned int xg_grammar_production_count (const xg_grammar *);
 
 /* Get Nth production.  */
-xg_production *xg_grammar_get_production (xg_grammar *, unsigned int n);
+xg_production *xg_grammar_get_production (const xg_grammar *, unsigned int n);
+
+/* Return true if the symbol SYM is a terminal.  */
+int xg_grammar_is_terminal_sym (const xg_grammar *g, xg_symbol sym);
+
+/* Compute the FIRST set for each non-terminal.  */
+int xg_grammar_compute_first (const xg_grammar *g);
 
 /* Display a debugging dump of the grammar.  */
-void xg_grammar_debug (FILE *, xg_grammar *);
+void xg_grammar_debug (FILE *, const xg_grammar *);
 
 
 /* Initialize grammars memory management.  */
-int xg_init_grammar_caches (void);
+int xg__init_grammar (void);
 
 END_DECLS
 #endif /* xg__grammar_h */

@@ -1,3 +1,5 @@
+%start stmt ;
+
 expr :
         expr/no-commas
     |   expr ',' expr/no-commas

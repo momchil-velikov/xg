@@ -88,25 +88,25 @@ main (int argc, char *argv [])
     }
 
   /* Initialize memory management.  */
-  if (xg_init_grammar_caches () < 0)
-    {
-      ulib_log_write (xg_log, stderr);
-      return -1;
-    }
+  if (xg__init_grammar () < 0)
+    goto error;
 
-  g = xg_grammar_read (argv [1]);
-  if (g == 0)
-    {
-      ulib_log_write (xg_log, stderr);
-      return -1;
-    }
-  else
-    {
-      xg_grammar_debug (stdout, g);
-      xg_grammar_del (g);
-      ulib_gcrun ();
-      return 0;
-    }
+  /* Parse the input file. */
+  if ((g = xg_grammar_read (argv [1])) == 0)
+    goto error;
+
+  /* Compute FIRST and FOLLOW sets.  */
+  if (xg_grammar_compute_first (g) < 0)
+    goto error;
+
+  xg_grammar_debug (stdout, g);
+  xg_grammar_del (g);
+  ulib_gcrun ();
+  return 0;
+
+error:
+  ulib_log_write (xg_log, stderr);
+  return -1;
 }
 
 /*
