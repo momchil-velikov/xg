@@ -29,7 +29,7 @@ const ulib_bitset *xg_eof_set;
 int
 xg_grammar_compute_first (const xg_grammar *g)
 {
-  int chg, sts, has_epsilon;
+  int chg, sts;
   unsigned int i, j, n, m;
   xg_symbol sym;
   xg_production *p;
@@ -100,6 +100,92 @@ xg_grammar_compute_first (const xg_grammar *g)
 
 error:
   ulib_log_printf (xg_log, "ERROR: Out of memory computing FIRST sets");
+  return -1;
+}
+
+/* Compute the FOLLOW set for each non-terminal.  */
+int
+xg_grammar_compute_follow (const xg_grammar *g)
+{
+  int chg, sts;
+  unsigned int i, j, k, n, m;
+  xg_production *p;
+  xg_symbol_def *ls, *rs, *fs;
+  xg_symbol sym;
+
+  /* Add the end-of-input marker to the FOLLOW set of the start
+     symbol.  */
+  ls = xg_grammar_get_symbol (g, g->start);
+  if (ulib_bitset_set (&ls->follow, XG_EOF) < 0)
+    goto error;
+
+  n = xg_grammar_production_count (g);
+  chg = 1;
+  while (chg)
+    {
+      chg = 0;
+      for (i = 0; i < n; ++i)
+        {
+          /* For each production X -> aYc, add to FOLLOW(Y) all the
+             symbols in FIRST(c), except epsilon. If c derives
+             epsilon, add FOLLOW(X) to FOLLOW(Y).  */
+          p = xg_grammar_get_production (g, i);
+          ls = xg_grammar_get_symbol (g, p->lhs);
+          m = xg_production_length (p);
+          for (j = 0; j < m; ++j)
+            {
+              /* Update FOLLOW (RS).  */
+              sym = xg_production_get_symbol (p, j);
+              if (xg_grammar_is_terminal_sym (g, sym))
+                continue;
+              rs = xg_grammar_get_symbol (g, sym);
+
+              for (k = j + 1; k < m; ++k)
+                {
+                  sym = xg_production_get_symbol (p, k);
+                  if (xg_grammar_is_terminal_sym (g, sym))
+                    {
+                      /* Add the terminal SYM to FOLLOW (RS).  */
+                      if (! ulib_bitset_is_set (&rs->follow, sym))
+                        {
+                          chg = 1;
+                          if (ulib_bitset_set (&rs->follow, sym) < 0)
+                            goto error;
+                        }
+                      break;
+                    }
+                  else
+                    {
+                      /* Add all the symbols in FIRST (FS) to FOLLOW
+                         (RS).  */
+                      fs = xg_grammar_get_symbol (g, sym);
+                      sts = ulib_bitset_destr_or_andn_chg (&rs->follow,
+                                                           &fs->first,
+                                                           xg_epsilon_set);
+                      if (sts < 0)
+                        goto error;
+                      chg = chg || (sts > 0);
+                      if (! ulib_bitset_is_set (&fs->first, XG_EPSILON))
+                        break;
+                    }
+                }
+
+              if (k >= m && ls != rs)
+                {
+                  /* Add FOLLOW(LS) to FOLLOW(RS).  */
+                  sts = ulib_bitset_destr_or_chg (&rs->follow, &ls->follow);
+                  if (sts < 0)
+                    goto error;
+                  chg = chg || (sts > 0);
+                }
+            }
+        }
+    }
+
+  return 0;
+
+error:
+  ulib_log_printf (xg_log, "ERROR: Out of memory computing FOLLOW sets");
   return -1;
 }
 

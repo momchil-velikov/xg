@@ -1,4 +1,4 @@
-%start stmt ;
+%start stmt-list ;
 
 expr :
         expr/no-commas
@@ -20,3 +20,5 @@ stmt-list :
         stmt ';'
     |   stmt-list stmt ';'
     ;
+
+/* arch-tag: b3f2b9c3-9b87-4358-b9e0-d766ea6d13c0 */

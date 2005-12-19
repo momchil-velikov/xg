@@ -153,6 +153,9 @@ int xg_grammar_is_terminal_sym (const xg_grammar *g, xg_symbol sym);
 /* Compute the FIRST set for each non-terminal.  */
 int xg_grammar_compute_first (const xg_grammar *g);
 
+/* Compute the FOLLOW set for each non-terminal.  */
+int xg_grammar_compute_follow (const xg_grammar *g);
+
 /* Display a debugging dump of the grammar.  */
 void xg_grammar_debug (FILE *, const xg_grammar *);
 

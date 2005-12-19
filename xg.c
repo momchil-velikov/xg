@@ -96,7 +96,8 @@ main (int argc, char *argv [])
     goto error;
 
   /* Compute FIRST and FOLLOW sets.  */
-  if (xg_grammar_compute_first (g) < 0)
+  if (xg_grammar_compute_first (g) < 0
+      || xg_grammar_compute_follow (g) < 0)
     goto error;
 
   xg_grammar_debug (stdout, g);
