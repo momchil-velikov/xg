@@ -66,6 +66,9 @@ struct xg_symbol_def
   /* FOLLOW set (for non-terminal symbols).  */
   ulib_bitset follow;
 
+  /* All productions, having this symbol as their left hand side.  */
+  ulib_vector prods;
+
   /* Terminal flag.  */
   unsigned int terminal : 1;
 };
@@ -74,8 +77,15 @@ typedef struct xg_symbol_def xg_symbol_def;
 /* Create a symbol definition.  */
 xg_symbol_def *xg_symbol_new (char *name);
 
-/* Delete a symbol definition.  */
-void xg_symbol_del (xg_symbol_def *);
+/* Add production N with DEF as its left hand side.  */
+int xg_symbol_def_add_production (xg_symbol_def *def, unsigned int n);
+
+/* Get the number of productions with DEF as their left hand side.  */
+unsigned int xg_symbol_def_production_count (const xg_symbol_def *def);
+
+/* Get the Nth production number.  */
+unsigned int xg_symbol_def_get_production (const xg_symbol_def *def,
+                                           unsigned int n);
 
 /* Sentenial form: vector of symbol codes.  */
 typedef ulib_vector xg_sentenial_form;

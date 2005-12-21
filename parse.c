@@ -307,26 +307,33 @@ parse_symbol_list (parse_ctx *ctx, xg_production *prod)
 }
 
 static int
-parse_rhs (parse_ctx *ctx, xg_symbol_def *lhs)
+parse_rhs_alternative (parse_ctx *ctx, xg_symbol_def *lhs)
 {
   xg_production *prod;
 
-  /* Create a production for the first alternaive and parse its right
-     hand side.  Add the production to the grammar.  */
+  /* Create a production for the alternaive and parse its right hand
+     side.  Add the production to the grammar.  */
   if ((prod = xg_production_new (lhs->code)) == 0
       || parse_symbol_list (ctx, prod) < 0
-      || xg_grammar_add_production (ctx->gram, prod) < 0)
+      || xg_grammar_add_production (ctx->gram, prod) < 0
+      || xg_symbol_def_add_production (lhs, xg_grammar_production_count (ctx->gram) - 1) < 0)
+    return -1;
+  else
+    return 0;
+}
+
+static int
+parse_rhs (parse_ctx *ctx, xg_symbol_def *lhs)
+{
+  /* Parse the first alternative.  */
+  if (parse_rhs_alternative (ctx, lhs) < 0)
     return -1;
 
   while (ctx->token == '|')
     {
-      /* Create a production for subsequent alternatives and parse
-         their right hand sides.  Add each new production to the
-         grammar.  */
+      /* Parse the subsequent alternatives.  */
       if (getlex (ctx) < 0
-          || (prod = xg_production_new (lhs->code)) == 0
-          || parse_symbol_list (ctx, prod) < 0
-          || xg_grammar_add_production (ctx->gram, prod) < 0)
+          || parse_rhs_alternative (ctx, lhs) < 0)
         return -1;
     }
 
