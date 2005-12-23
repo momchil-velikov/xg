@@ -51,6 +51,7 @@ symbol_def_clear (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
   free (def->name);
   ulib_bitset_clear_all (&def->first);
   ulib_bitset_clear_all (&def->follow);
+  ulib_vector_set_size (&def->prods, 0);
 }
 
 static void
@@ -58,6 +59,7 @@ symbol_def_dtor (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
 {
   ulib_bitset_destroy (&def->first);
   ulib_bitset_destroy (&def->follow);
+  ulib_vector_destroy (&def->prods);
 }
 
 
