@@ -24,6 +24,7 @@
 #include "xg.h"
 #include <ulib/cache.h>
 #include <ulib/log.h>
+#include <ulib/bitset.h>
 
 /* LR(0) set cache.  */
 static ulib_cache *lr0set_cache;
@@ -71,7 +72,7 @@ xg_lr0set_new ()
    negative on error, positive if the set changed (item not present)
    or zero otherwise.  */
 int
-xg_lr0set_add (xg_lr0set *set, unsigned int prod, unsigned int dot)
+xg_lr0set_add_item (xg_lr0set *set, unsigned int prod, unsigned int dot)
 {
   unsigned int i, n;
   xg_lr0item *it;
@@ -113,46 +114,75 @@ xg_lr0set_get_item (const xg_lr0set *set, unsigned int n)
 }
 
 /* Compute the closure of an LR(0) set.  */
-int
-xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set)
+static int
+lr0set_closure (const xg_grammar *g, xg_lr0set *set, ulib_bitset *done)
 {
   unsigned int i, j, n;
   xg_sym sym;
   xg_symdef *def;
   const xg_lr0item *it;
   const xg_prod *p;
-
+ 
   /* Get the next LR(0) item.  If the dot is in front of a terminal,
      skip the item, otherwise add to the set an item with the dot at
      the front for each production having the symbol as its left hand
      side.  Do not add duplicate items.  */
-  i = 0;
-  while (i < xg_lr0set_count (set))
+  for (i = 0; i < xg_lr0set_count (set); ++i)
     {
       /* Get next item, the production and the symbol following the
          dot.  */
       it = xg_lr0set_get_item (set, i);
       p = xg_grammar_get_prod (g, it->prod);
-      if (it->dot < xg_prod_length (p))
-        {
-          sym = xg_prod_get_symbol (p, it->dot);
-          if (!xg_grammar_is_terminal_sym (g, sym))
-            {
-              def = xg_grammar_get_symbol (g, sym);
 
-              /* Append items.  */
-              n = xg_symdef_prod_count (def);
-              for (j = 0; j < n; ++j)
-                if (xg_lr0set_add (set, xg_symdef_get_prod (def, j), 0) < 0)
-                  return -1;
-            }
+      /* Do nothing if the dot is at the end of the production, in
+         front of a terninal symbol or in from the an already expanded
+         non-terminal.  */
+      if (it->dot >= xg_prod_length (p))
+        continue;
+      sym = xg_prod_get_symbol (p, it->dot);
+      if (xg_grammar_is_terminal_sym (g, sym) || ulib_bitset_is_set (done, sym))
+        continue;
+
+      /* Add the non-terminal to the done set.  */
+      if (ulib_bitset_set (done, sym) < 0)
+        {
+          ulib_log_printf (xg_log,
+                           "ERROR: Unable to add to the done set while"
+                           " computing LR(0) closure");
+          return -1;
         }
 
-      /* Advance to the next unprocessed item.  */
-      ++i;
+      /* Append items LR(0) items.  */
+      def = xg_grammar_get_symbol (g, sym);
+      n = xg_symdef_prod_count (def);
+      for (j = 0; j < n; ++j)
+        if (xg_lr0set_add_item (set, xg_symdef_get_prod (def, j), 0) < 0)
+          return -1;
     }
 
   return 0;
+}
+
+/* Compute the closure of an LR(0) set.  */
+int
+xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set)
+{
+  int sts;
+  ulib_bitset done;
+
+  /* Create a set record already expanded non-terminal symbols.  */
+  if (ulib_bitset_init (&done) < 0)
+    {
+      ulib_log_printf (xg_log,
+                       "ERROR: Unable to create expansion track bitset.");
+      return -1;
+    }
+
+  sts = lr0set_closure(g, set, &done);
+  
+  ulib_bitset_destroy (&done);
+  
+  return sts;
 }
 
 /* Display a debugging dump of an LR(0) set.  */

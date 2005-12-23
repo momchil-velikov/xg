@@ -53,7 +53,7 @@ xg_lr0set *xg_lr0set_new ();
 /* Add the item <PROD,DOT> to the set, if not already present.  Return
    negative on error, positive if the set changed (item not present)
    or zero otherwise.  */
-int xg_lr0set_add (xg_lr0set *set, unsigned int prod, unsigned int dot);
+int xg_lr0set_add_item (xg_lr0set *set, unsigned int prod, unsigned int dot);
 
 /* Return the number of items in the set.  */
 unsigned int xg_lr0set_count (const xg_lr0set *set);
