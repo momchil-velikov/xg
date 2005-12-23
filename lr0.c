@@ -107,10 +107,41 @@ xg_lr0set_count (const xg_lr0set *set)
 }
 
 /* Return the Nth item in the set.  */
-const xg_lr0item *
+xg_lr0item *
 xg_lr0set_get_item (const xg_lr0set *set, unsigned int n)
 {
   return ulib_vector_elt (&set->items, n);
+}
+
+/* Sort the items in an LR(0) set.  */
+static void
+lr0set_sort (xg_lr0set *set)
+{
+  unsigned int i, n, tmp;
+  xg_lr0item *a, *b;
+
+  n = xg_lr0set_count (set);
+  while (n--)
+    {
+      a = xg_lr0set_get_item (set, 0);
+      for (i = 1; i < n; ++i)
+        {
+          b = xg_lr0set_get_item (set, i);
+
+          if (a->dot < b->dot || (a->dot == b->dot && a->prod > b->prod))
+            {
+              tmp = a->dot;
+              a->dot = b->dot;
+              b->dot = tmp;
+
+              tmp = a->prod;
+              a->prod = b->prod;
+              b->prod = tmp;
+            }
+
+          a = b;
+        }
+    }
 }
 
 /* Compute the closure of an LR(0) set.  */
@@ -160,6 +191,7 @@ lr0set_closure (const xg_grammar *g, xg_lr0set *set, ulib_bitset *done)
           return -1;
     }
 
+  lr0set_sort (set);
   return 0;
 }
 

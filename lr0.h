@@ -59,7 +59,7 @@ int xg_lr0set_add_item (xg_lr0set *set, unsigned int prod, unsigned int dot);
 unsigned int xg_lr0set_count (const xg_lr0set *set);
 
 /* Return the Nth item in the set.  */
-const xg_lr0item *xg_lr0set_get_item (const xg_lr0set *set, unsigned int n);
+xg_lr0item *xg_lr0set_get_item (const xg_lr0set *set, unsigned int n);
 
 /* Compute the closure of an LR(0) set.  */
 struct xg_grammar;
