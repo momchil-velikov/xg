@@ -20,6 +20,7 @@
  */
 #include <stdio.h>
 #include "grammar.h"
+#include "lr0.h"
 #include "xg.h"
 #include <ulib/cache.h>
 
@@ -88,7 +89,8 @@ main (int argc, char *argv [])
     }
 
   /* Initialize memory management.  */
-  if (xg__init_grammar () < 0)
+  if (xg__init_grammar () < 0
+      || xg__init_lr0_sets () < 0)
     goto error;
 
   /* Parse the input file. */

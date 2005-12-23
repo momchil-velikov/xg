@@ -1,4 +1,4 @@
-/* xg.h.c - miscelaneous definitions
+/* xg.h - miscelaneous definitions
  *
  * Copyright (C) 2005 Momchil Velikov
  *

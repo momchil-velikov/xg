@@ -165,6 +165,21 @@ int xg_grammar_compute_first (const xg_grammar *g);
 
 /* Compute the FOLLOW set for each non-terminal.  */
 int xg_grammar_compute_follow (const xg_grammar *g);
+
+
+/* Display a symbol name.  */
+void xg_symbol_name_debug (FILE *out, const xg_grammar *g, xg_symbol sym);
+
+/* Display a set of symbols.  */
+void xg_symset_debug (FILE *out, const xg_grammar *g, const ulib_bitset *set);
+
+/* Display a debugging dump of a symbol.  */
+void xg_symbol_def_debug (FILE *out, const xg_grammar *g,
+                          const xg_symbol_def *def);
+
+/* Display a debugging dump a production.  */
+void xg_production_debug (FILE *out, const xg_grammar *g,
+                          const xg_production *p);
 
 /* Display a debugging dump of the grammar.  */
 void xg_grammar_debug (FILE *, const xg_grammar *);

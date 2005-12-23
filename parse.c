@@ -480,7 +480,7 @@ xg_grammar_read (const char *name)
     }
   else
     {
-      ulib_log_printf (xg_log, "Cannot open input file ``%s''", name);
+      ulib_log_printf (xg_log, "ERROR: Cannot open input file ``%s''", name);
       return 0;
     }
 
@@ -504,7 +504,7 @@ xg_grammar_read (const char *name)
       start = xg_grammar_get_production (ctx.gram, 1);
       if (start == 0)
         {
-          ulib_log_printf (xg_log, "Grammar has no productions");
+          ulib_log_printf (xg_log, "ERROR: Grammar has no productions");
           goto error;
         }
       ctx.gram->start = start->lhs;
