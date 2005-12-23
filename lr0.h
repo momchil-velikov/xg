@@ -29,7 +29,7 @@
 BEGIN_DECLS
 
 /* An LR(0) item.  */
-struct xg_lr0_item
+struct xg_lr0item
 {
   /* Production number.  */
   unsigned int prod;
@@ -37,41 +37,41 @@ struct xg_lr0_item
   /* Dot position.  */
   unsigned int dot;
 };
-typedef struct xg_lr0_item xg_lr0_item;
+typedef struct xg_lr0item xg_lr0item;
 
 /* An LR(0) item set/State in the  DFA for viable prefixes.  */
-struct xg_lr0_set
+struct xg_lr0set
 {
   /* LR(0) items.  */
   ulib_vector items;
 };
-typedef struct xg_lr0_set xg_lr0_set;
+typedef struct xg_lr0set xg_lr0set;
 
 /* Create an LR(0) set.  */
-xg_lr0_set *xg_lr0_set_new ();
+xg_lr0set *xg_lr0set_new ();
 
 /* Add the item <PROD,DOT> to the set, if not already present.  Return
    negative on error, positive if the set changed (item not present)
    or zero otherwise.  */
-int xg_lr0_set_add (xg_lr0_set *set, unsigned int prod, unsigned int dot);
+int xg_lr0set_add (xg_lr0set *set, unsigned int prod, unsigned int dot);
 
 /* Return the number of items in the set.  */
-unsigned int xg_lr0_set_count (const xg_lr0_set *set);
+unsigned int xg_lr0set_count (const xg_lr0set *set);
 
 /* Return the Nth item in the set.  */
-const xg_lr0_item *xg_lr0_set_get (const xg_lr0_set *set, unsigned int n);
+const xg_lr0item *xg_lr0set_get_item (const xg_lr0set *set, unsigned int n);
 
 /* Compute the closure of an LR(0) set.  */
 struct xg_grammar;
-int xg_lr0_set_closure (const struct xg_grammar *g, xg_lr0_set *set);
+int xg_lr0set_closure (const struct xg_grammar *g, xg_lr0set *set);
 
 /* Display a debugging dump of an LR(0) set.  */
-void xg_lr0_set_debug (FILE *out, const struct xg_grammar *g,
-                       const xg_lr0_set *set);
+void xg_lr0set_debug (FILE *out, const struct xg_grammar *g,
+                      const xg_lr0set *set);
 
 
 /* Initialize LR(0) sets memory management.  */
-int xg__init_lr0_sets ();
+int xg__init_lr0sets ();
 
 END_DECLS
 

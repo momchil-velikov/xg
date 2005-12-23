@@ -38,10 +38,10 @@ int xg_symtab_init (xg_symtab *);
 void xg_symtab_destroy (xg_symtab *);
 
 /* Insert a symbol to the symbol table.  */
-void xg_symtab_insert (xg_symtab *, xg_symbol_def *);
+void xg_symtab_insert (xg_symtab *, xg_symdef *);
 
 /* Find a symbol in the symbol table.  */
-xg_symbol_def *xg_symtab_lookup (const xg_symtab *, const char *);
+xg_symdef *xg_symtab_lookup (const xg_symtab *, const char *);
 
 END_DECLS
 #endif /* xg__symtab_h */

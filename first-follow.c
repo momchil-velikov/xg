@@ -31,20 +31,20 @@ xg_grammar_compute_first (const xg_grammar *g)
 {
   int chg, sts;
   unsigned int i, j, n, m;
-  xg_symbol sym;
-  xg_production *p;
-  xg_symbol_def *ls, *rs;
+  xg_sym sym;
+  xg_prod *p;
+  xg_symdef *ls, *rs;
 
-  n = xg_grammar_production_count (g);
+  n = xg_grammar_prod_count (g);
   chg = 1;
   while (chg)
     {
       chg = 0;
       for (i = 0; i < n; ++i)
         {
-          p = xg_grammar_get_production (g, i);
+          p = xg_grammar_get_prod (g, i);
           ls = xg_grammar_get_symbol (g, p->lhs);
-          m = xg_production_length (p);
+          m = xg_prod_length (p);
           if (m == 0)
             {
               /* For each production X -> epsilon, add epsilon to
@@ -61,7 +61,7 @@ xg_grammar_compute_first (const xg_grammar *g)
                  epsilon is in each FIRST (Yi).  */
               for (j = 0; j < m; ++j)
                 {
-                  sym = xg_production_get_symbol (p, j);
+                  sym = xg_prod_get_symbol (p, j);
                   if (xg_grammar_is_terminal_sym (g, sym))
                     {
                       if (! ulib_bitset_is_set (&ls->first, sym))
@@ -109,9 +109,9 @@ xg_grammar_compute_follow (const xg_grammar *g)
 {
   int chg, sts;
   unsigned int i, j, k, n, m;
-  xg_production *p;
-  xg_symbol_def *ls, *rs, *fs;
-  xg_symbol sym;
+  xg_prod *p;
+  xg_symdef *ls, *rs, *fs;
+  xg_sym sym;
 
   /* Add the end-of-input marker to the FOLLOW set of the start
      symbol.  */
@@ -119,7 +119,7 @@ xg_grammar_compute_follow (const xg_grammar *g)
   if (ulib_bitset_set (&ls->follow, XG_EOF) < 0)
     goto error;
 
-  n = xg_grammar_production_count (g);
+  n = xg_grammar_prod_count (g);
   chg = 1;
   while (chg)
     {
@@ -129,20 +129,20 @@ xg_grammar_compute_follow (const xg_grammar *g)
           /* For each production X -> aYc, add to FOLLOW(Y) all the
              symbols in FIRST(c), except epsilon. If c derives
              epsilon, add FOLLOW(X) to FOLLOW(Y).  */
-          p = xg_grammar_get_production (g, i);
+          p = xg_grammar_get_prod (g, i);
           ls = xg_grammar_get_symbol (g, p->lhs);
-          m = xg_production_length (p);
+          m = xg_prod_length (p);
           for (j = 0; j < m; ++j)
             {
               /* Update FOLLOW (RS).  */
-              sym = xg_production_get_symbol (p, j);
+              sym = xg_prod_get_symbol (p, j);
               if (xg_grammar_is_terminal_sym (g, sym))
                 continue;
               rs = xg_grammar_get_symbol (g, sym);
 
               for (k = j + 1; k < m; ++k)
                 {
-                  sym = xg_production_get_symbol (p, k);
+                  sym = xg_prod_get_symbol (p, k);
                   if (xg_grammar_is_terminal_sym (g, sym))
                     {
                       /* Add the terminal SYM to FOLLOW (RS).  */

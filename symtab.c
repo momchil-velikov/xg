@@ -28,7 +28,7 @@
 static unsigned int
 symtab_hash (const ulib_list *lst)
 {
-  const xg_symbol_def *def = (const xg_symbol_def *) lst;
+  const xg_symdef *def = (const xg_symdef *) lst;
 
   return ulib_strhash (def->name);
 }
@@ -37,8 +37,8 @@ symtab_hash (const ulib_list *lst)
 static int
 symtab_cmp (const ulib_list *a, const ulib_list *b)
 {
-  const xg_symbol_def *def_a = (const xg_symbol_def *) a;
-  const xg_symbol_def *def_b = (const xg_symbol_def *) b;
+  const xg_symdef *def_a = (const xg_symdef *) a;
+  const xg_symdef *def_b = (const xg_symdef *) b;
 
   return strcmp (def_a->name, def_b->name);
 }
@@ -59,19 +59,19 @@ xg_symtab_destroy (xg_symtab *tab)
 
 /* Insert a symbol to the symbol table.  */
 void
-xg_symtab_insert (xg_symtab *tab, xg_symbol_def *def)
+xg_symtab_insert (xg_symtab *tab, xg_symdef *def)
 {
   ulib_hash_insert (tab, &def->list);
 }
 
 /* Find a symbol in the symbol table.  */
-xg_symbol_def *
+xg_symdef *
 xg_symtab_lookup (const xg_symtab *tab, const char *name)
 {
-  xg_symbol_def def;
+  xg_symdef def;
   def.name = (char *) name;
 
-  return (xg_symbol_def *) ulib_hash_lookup (tab, &def.list);
+  return (xg_symdef *) ulib_hash_lookup (tab, &def.list);
 }
 END_DECLS
 

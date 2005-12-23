@@ -24,11 +24,11 @@
 #include <ulib/bitset.h>
 
 /* Symbol definition cache.  */
-static ulib_cache *symbol_def_cache;
+static ulib_cache *symdef_cache;
 
 /* Symbol definition constructor.  */
 static int
-symbol_def_ctor (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
+symdef_ctor (xg_symdef *def, unsigned int sz __attribute__ ((unused)))
 {
   if (ulib_bitset_init (&def->first) == 0)
     {
@@ -46,7 +46,7 @@ symbol_def_ctor (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
 
 /* Symbol definition destruction.  */
 static void
-symbol_def_clear (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
+symdef_clear (xg_symdef *def, unsigned int sz __attribute__ ((unused)))
 {
   free (def->name);
   ulib_bitset_clear_all (&def->first);
@@ -55,7 +55,7 @@ symbol_def_clear (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
 }
 
 static void
-symbol_def_dtor (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
+symdef_dtor (xg_symdef *def, unsigned int sz __attribute__ ((unused)))
 {
   ulib_bitset_destroy (&def->first);
   ulib_bitset_destroy (&def->follow);
@@ -64,12 +64,12 @@ symbol_def_dtor (xg_symbol_def *def, unsigned int sz __attribute__ ((unused)))
 
 
 /* Create a symbol definition.  */
-xg_symbol_def *
-xg_symbol_new (char *name)
+xg_symdef *
+xg_symdef_new (char *name)
 {
-  xg_symbol_def *def;
+  xg_symdef *def;
 
-  if ((def = ulib_cache_alloc (symbol_def_cache)) != 0)
+  if ((def = ulib_cache_alloc (symdef_cache)) != 0)
     {
       def->code = 0;
       def->name = name;
@@ -84,40 +84,40 @@ xg_symbol_new (char *name)
 
 /* Add production N with DEF as its left hand side.  */
 int
-xg_symbol_def_add_production (xg_symbol_def *def, unsigned int n)
+xg_symdef_add_prod (xg_symdef *def, unsigned int n)
 {
   return ulib_vector_append (&def->prods, &n);
 }
 
 /* Get the number of productions with DEF as their left hand side.  */
 unsigned int
-xg_symbol_def_production_count (const xg_symbol_def *def)
+xg_symdef_prod_count (const xg_symdef *def)
 {
   return ulib_vector_length (&def->prods);
 }
 
 /* Get the Nth production number.  */
 unsigned int
-xg_symbol_def_get_production (const xg_symbol_def *def, unsigned int n)
+xg_symdef_get_prod (const xg_symdef *def, unsigned int n)
 {
   return *(unsigned int *) ulib_vector_elt (&def->prods, n);
 }
 
 
 /* Productions cache.  */
-static ulib_cache *production_cache;
+static ulib_cache *prod_cache;
 
 /* Create a production.  */
-xg_production *
-xg_production_new (xg_symbol lhs)
+xg_prod *
+xg_prod_new (xg_sym lhs)
 {
-  xg_production *prod;
+  xg_prod *prod;
 
-  prod = ulib_cache_alloc (production_cache);
+  prod = ulib_cache_alloc (prod_cache);
   if (prod != 0)
     {
       prod->lhs = lhs;
-      if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_symbol),
+      if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym),
                             ULIB_GROWTH_SCALE, 2, 0) == 0)
         return prod;
 
@@ -131,9 +131,9 @@ xg_production_new (xg_symbol lhs)
 
 /* Production constructor.  */
 static int
-production_ctor (xg_production *prod, unsigned int sz __attribute__ ((unused)))
+prod_ctor (xg_prod *prod, unsigned int sz __attribute__ ((unused)))
 {
-  if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_symbol),
+  if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym),
                         ULIB_GROWTH_SCALE, 2, 0) == 0)
     return 0;
 
@@ -143,20 +143,20 @@ production_ctor (xg_production *prod, unsigned int sz __attribute__ ((unused)))
 
 /* Production destruction.  */
 static void
-production_clear (xg_production *prod, unsigned int sz __attribute ((unused)))
+prod_clear (xg_prod *prod, unsigned int sz __attribute ((unused)))
 {
   ulib_vector_set_size (&prod->rhs, 0);
 }
 
 static void
-production_dtor (xg_production *prod, unsigned int sz __attribute__ ((unused)))
+prod_dtor (xg_prod *prod, unsigned int sz __attribute__ ((unused)))
 {
   ulib_vector_destroy (&prod->rhs);
 }
 
 /* Append a symbol to the right hand side.  */
 int
-xg_production_add (xg_production *prod, xg_symbol sym)
+xg_prod_add (xg_prod *prod, xg_sym sym)
 {
   int sts;
 
@@ -168,16 +168,16 @@ xg_production_add (xg_production *prod, xg_symbol sym)
 /* Get the number of the symbols at the right hand side of a
    production.  */
 unsigned int
-xg_production_length (const xg_production *p)
+xg_prod_length (const xg_prod *p)
 {
   return ulib_vector_length (&p->rhs);
 }
 
 /* Get the Nth symbol from the right hand side of a production.  */
-xg_symbol
-xg_production_get_symbol (const xg_production *p, unsigned int n)
+xg_sym
+xg_prod_get_symbol (const xg_prod *p, unsigned int n)
 {
-  return *(xg_symbol *) ulib_vector_elt (&p->rhs, n);
+  return *(xg_sym *) ulib_vector_elt (&p->rhs, n);
 }
 
 
@@ -252,8 +252,8 @@ xg_grammar_del (xg_grammar *g)
 
 /* Add a symbol definition to a grammar.  Return symbol index or
    negative on error.  */
-xg_symbol
-xg_grammar_add_symbol (xg_grammar *g, xg_symbol_def *def)
+xg_sym
+xg_grammar_add_symbol (xg_grammar *g, xg_symdef *def)
 {
   if (ulib_vector_append_ptr (&g->syms, def) < 0)
     {
@@ -265,38 +265,38 @@ xg_grammar_add_symbol (xg_grammar *g, xg_symbol_def *def)
 }
 
 /* Get the symbol definition for the symbol CODE.  */
-xg_symbol_def *
-xg_grammar_get_symbol (const xg_grammar *g, xg_symbol code)
+xg_symdef *
+xg_grammar_get_symbol (const xg_grammar *g, xg_sym code)
 {
-  return (xg_symbol_def *) ulib_vector_ptr_elt (&g->syms, code);
+  return (xg_symdef *) ulib_vector_ptr_elt (&g->syms, code);
 }
 
 /* Add a production to the grammar.  */
 int
-xg_grammar_add_production (xg_grammar *g, xg_production *p)
+xg_grammar_add_prod (xg_grammar *g, xg_prod *p)
 {
   return ulib_vector_append_ptr (&g->prods, p);
 }
 
 /* Get production count.  */
 unsigned int
-xg_grammar_production_count (const xg_grammar *g)
+xg_grammar_prod_count (const xg_grammar *g)
 {
   return ulib_vector_length (&g->prods);
 }
 
 /* Get Nth production.  */
-xg_production *
-xg_grammar_get_production (const xg_grammar *g, unsigned int n)
+xg_prod *
+xg_grammar_get_prod (const xg_grammar *g, unsigned int n)
 {
-  return (xg_production *) ulib_vector_ptr_elt (&g->prods, n);
+  return (xg_prod *) ulib_vector_ptr_elt (&g->prods, n);
 }
 
 /* Return true if the symbol SYM is a terminal.  */
 int
-xg_grammar_is_terminal_sym (const xg_grammar *g, xg_symbol sym)
+xg_grammar_is_terminal_sym (const xg_grammar *g, xg_sym sym)
 {
-  xg_symbol_def *def;
+  xg_symdef *def;
 
   if (sym < XG_TOKEN_LITERAL_MAX)
     return 1;
@@ -310,22 +310,22 @@ xg_grammar_is_terminal_sym (const xg_grammar *g, xg_symbol sym)
 static int
 init_caches (void)
 {
-  symbol_def_cache = ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_symbol_def),
-                                        ULIB_CACHE_ALIGN, sizeof (unsigned int),
-                                        ULIB_CACHE_CTOR, symbol_def_ctor,
-                                        ULIB_CACHE_CLEAR, symbol_def_clear,
-                                        ULIB_CACHE_DTOR, symbol_def_dtor,
-                                        ULIB_CACHE_GC, 0);
-  if (symbol_def_cache != 0)
+  symdef_cache = ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_symdef),
+                                    ULIB_CACHE_ALIGN, sizeof (unsigned int),
+                                    ULIB_CACHE_CTOR, symdef_ctor,
+                                    ULIB_CACHE_CLEAR, symdef_clear,
+                                    ULIB_CACHE_DTOR, symdef_dtor,
+                                    ULIB_CACHE_GC, 0);
+  if (symdef_cache != 0)
     {
-      production_cache =
-        ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_production),
+      prod_cache =
+        ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_prod),
                            ULIB_CACHE_ALIGN, sizeof (void *),
-                           ULIB_CACHE_CTOR, production_ctor,
-                           ULIB_CACHE_CLEAR, production_clear,
-                           ULIB_CACHE_DTOR, production_dtor,
+                           ULIB_CACHE_CTOR, prod_ctor,
+                           ULIB_CACHE_CLEAR, prod_clear,
+                           ULIB_CACHE_DTOR, prod_dtor,
                            ULIB_CACHE_GC, 0);
-      if (production_cache != 0)
+      if (prod_cache != 0)
         return 0;
       else
         ulib_log_printf (xg_log,
@@ -383,9 +383,9 @@ xg__init_grammar (void)
 
 
 void
-xg_symbol_name_debug (FILE *out, const xg_grammar *g, xg_symbol sym)
+xg_symbol_name_debug (FILE *out, const xg_grammar *g, xg_sym sym)
 {
-  xg_symbol_def *def;
+  xg_symdef *def;
 
   if (sym == XG_EOF)
     fputs ("<eof>", out);
@@ -418,22 +418,22 @@ xg_symset_debug (FILE *out, const xg_grammar *g, const ulib_bitset *set)
 }
 
 void
-xg_symbol_def_debug (FILE *out, const xg_grammar *g, const xg_symbol_def *def)
+xg_symdef_debug (FILE *out, const xg_grammar *g, const xg_symdef *def)
 {
   fprintf (out, "Symbol %u (%s):\n\tname: %s\n", def->code,
            def->terminal ? "terminal" : "non-terminal", def->name);
 
   if (def->terminal == 0)
     {
-      if (xg_symbol_def_production_count (def) != 0)
+      if (xg_symdef_prod_count (def) != 0)
         {
           unsigned int i, n;
 
           fprintf (out, "\tProductions:");
 
-          n = xg_symbol_def_production_count (def);
+          n = xg_symdef_prod_count (def);
           for (i = 0; i < n; ++i)
-            fprintf (out, " %u", xg_symbol_def_get_production (def, i));
+            fprintf (out, " %u", xg_symdef_get_prod (def, i));
           fputc ('\n', out);
         }
 
@@ -447,19 +447,19 @@ xg_symbol_def_debug (FILE *out, const xg_grammar *g, const xg_symbol_def *def)
 
 /* Display a debugging dump a production.  */
 void
-xg_production_debug (FILE *out, const xg_grammar *g, const xg_production *p)
+xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
 {
-  xg_symbol sym;
-  xg_symbol_def *def;
+  xg_sym sym;
+  xg_symdef *def;
   unsigned int i, n;
 
   def = xg_grammar_get_symbol (g, p->lhs);
   fprintf (out, "%s ->", def->name);
 
-  n = xg_production_length (p);
+  n = xg_prod_length (p);
   for (i = 0; i < n; ++i)
     {
-      sym = xg_production_get_symbol (p, i);
+      sym = xg_prod_get_symbol (p, i);
       fputc (' ', out);
       xg_symbol_name_debug (out, g, sym);
     }
@@ -471,16 +471,16 @@ void
 xg_grammar_debug (FILE *out, const xg_grammar *g)
 {
   unsigned int i, n;
-  xg_production *p;
-  xg_symbol_def *def;
+  xg_prod *p;
+  xg_symdef *def;
 
   fputs ("Productions:\n------------\n\n", out);
-  n = xg_grammar_production_count (g);
+  n = xg_grammar_prod_count (g);
   for (i = 0; i < n; ++i)
     {
-      p = xg_grammar_get_production (g, i);
+      p = xg_grammar_get_prod (g, i);
       fprintf (out, "%4d: ", i);
-      xg_production_debug (out, g, p);
+      xg_prod_debug (out, g, p);
     }
 
   fputs ("Symbols:\n--------\n\n", out);
@@ -489,7 +489,7 @@ xg_grammar_debug (FILE *out, const xg_grammar *g)
     {
       def = xg_grammar_get_symbol (g, i);
       if (def != 0)
-        xg_symbol_def_debug (out, g, def);
+        xg_symdef_debug (out, g, def);
     }
 }
 

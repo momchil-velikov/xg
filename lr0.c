@@ -26,13 +26,13 @@
 #include <ulib/log.h>
 
 /* LR(0) set cache.  */
-static ulib_cache *lr0_set_cache;
+static ulib_cache *lr0set_cache;
 
 /* LR(0) set constructor.  */
 static int
-lr0_set_ctor (xg_lr0_set *set, unsigned int size __attribute__ ((unused)))
+lr0set_ctor (xg_lr0set *set, unsigned int size __attribute__ ((unused)))
 {
-  if (ulib_vector_init (&set->items, ULIB_ELT_SIZE, sizeof (xg_lr0_item), 0)
+  if (ulib_vector_init (&set->items, ULIB_ELT_SIZE, sizeof (xg_lr0item), 0)
       < 0)
     return -1;
   else
@@ -41,26 +41,26 @@ lr0_set_ctor (xg_lr0_set *set, unsigned int size __attribute__ ((unused)))
 
 /* LR(0) set clear.  */
 static void
-lr0_set_clear (xg_lr0_set *set, unsigned int size __attribute__ ((unused)))
+lr0set_clear (xg_lr0set *set, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_set_size (&set->items, 0);
 }
 
 /* LR(0) set destructor.  */
 static void
-lr0_set_dtor (xg_lr0_set *set, unsigned int size __attribute__ ((unused)))
+lr0set_dtor (xg_lr0set *set, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_destroy (&set->items);
 }
 
 
 /* Create an LR(0) set.  */
-xg_lr0_set *
-xg_lr0_set_new ()
+xg_lr0set *
+xg_lr0set_new ()
 {
-  xg_lr0_set *set;
+  xg_lr0set *set;
 
-  if ((set = ulib_cache_alloc (lr0_set_cache)) != 0)
+  if ((set = ulib_cache_alloc (lr0set_cache)) != 0)
     return set;
 
   ulib_log_printf (xg_log, "ERROR: Unable to allocate an LR(0) set");
@@ -71,10 +71,10 @@ xg_lr0_set_new ()
    negative on error, positive if the set changed (item not present)
    or zero otherwise.  */
 int
-xg_lr0_set_add (xg_lr0_set *set, unsigned int prod, unsigned int dot)
+xg_lr0set_add (xg_lr0set *set, unsigned int prod, unsigned int dot)
 {
   unsigned int i, n;
-  xg_lr0_item *it;
+  xg_lr0item *it;
 
   /* Check for duplicates. */
   n = ulib_vector_length (&set->items);
@@ -100,50 +100,50 @@ xg_lr0_set_add (xg_lr0_set *set, unsigned int prod, unsigned int dot)
 
 /* Return the number of items in the set.  */
 unsigned int
-xg_lr0_set_count (const xg_lr0_set *set)
+xg_lr0set_count (const xg_lr0set *set)
 {
   return ulib_vector_length (&set->items);
 }
 
 /* Return the Nth item in the set.  */
-const xg_lr0_item *
-xg_lr0_set_get (const xg_lr0_set *set, unsigned int n)
+const xg_lr0item *
+xg_lr0set_get_item (const xg_lr0set *set, unsigned int n)
 {
   return ulib_vector_elt (&set->items, n);
 }
 
 /* Compute the closure of an LR(0) set.  */
 int
-xg_lr0_set_closure (const xg_grammar *g, xg_lr0_set *set)
+xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set)
 {
   unsigned int i, j, n;
-  xg_symbol sym;
-  xg_symbol_def *def;
-  const xg_lr0_item *it;
-  const xg_production *p;
+  xg_sym sym;
+  xg_symdef *def;
+  const xg_lr0item *it;
+  const xg_prod *p;
 
   /* Get the next LR(0) item.  If the dot is in front of a terminal,
      skip the item, otherwise add to the set an item with the dot at
      the front for each production having the symbol as its left hand
      side.  Do not add duplicate items.  */
   i = 0;
-  while (i < xg_lr0_set_count (set))
+  while (i < xg_lr0set_count (set))
     {
       /* Get next item, the production and the symbol following the
          dot.  */
-      it = xg_lr0_set_get (set, i);
-      p = xg_grammar_get_production (g, it->prod);
-      if (it->dot < xg_production_length (p))
+      it = xg_lr0set_get_item (set, i);
+      p = xg_grammar_get_prod (g, it->prod);
+      if (it->dot < xg_prod_length (p))
         {
-          sym = xg_production_get_symbol (p, it->dot);
+          sym = xg_prod_get_symbol (p, it->dot);
           if (!xg_grammar_is_terminal_sym (g, sym))
             {
               def = xg_grammar_get_symbol (g, sym);
 
               /* Append items.  */
-              n = xg_symbol_def_production_count (def);
+              n = xg_symdef_prod_count (def);
               for (j = 0; j < n; ++j)
-                if (xg_lr0_set_add (set, xg_symbol_def_get_production (def, j), 0) < 0)
+                if (xg_lr0set_add (set, xg_symdef_get_prod (def, j), 0) < 0)
                   return -1;
             }
         }
@@ -157,18 +157,18 @@ xg_lr0_set_closure (const xg_grammar *g, xg_lr0_set *set)
 
 /* Display a debugging dump of an LR(0) set.  */
 void
-xg_lr0_set_debug (FILE *out, const struct xg_grammar *g,
-                  const xg_lr0_set *set)
+xg_lr0set_debug (FILE *out, const struct xg_grammar *g,
+                  const xg_lr0set *set)
 {
   unsigned int i, j, n, m;
-  xg_production *p;
-  const xg_lr0_item *it;
+  xg_prod *p;
+  const xg_lr0item *it;
 
-  n = xg_lr0_set_count (set);
+  n = xg_lr0set_count (set);
   for (i = 0; i < n; ++i)
     {
-      it = xg_lr0_set_get (set, i);
-      p = xg_grammar_get_production (g, it->prod);
+      it = xg_lr0set_get_item (set, i);
+      p = xg_grammar_get_prod (g, it->prod);
 
       xg_symbol_name_debug (out, g, p->lhs);
       fputs (" ->", out);
@@ -176,16 +176,16 @@ xg_lr0_set_debug (FILE *out, const struct xg_grammar *g,
       for (j = 0; j < it->dot; ++j)
         {
           fputc (' ', out);
-          xg_symbol_name_debug (out, g, xg_production_get_symbol (p, j));
+          xg_symbol_name_debug (out, g, xg_prod_get_symbol (p, j));
         }
 
       fputs (" .", out);
 
-      m = xg_production_length (p);
+      m = xg_prod_length (p);
       for (;j < m; ++j)
         {
           fputc (' ', out);
-          xg_symbol_name_debug (out, g, xg_production_get_symbol (p, j));
+          xg_symbol_name_debug (out, g, xg_prod_get_symbol (p, j));
         }
 
       fputc ('\n', out);
@@ -195,16 +195,16 @@ xg_lr0_set_debug (FILE *out, const struct xg_grammar *g,
 
 /* Initialize LR(0) sets memory management.  */
 int
-xg__init_lr0_sets ()
+xg__init_lr0sets ()
 {
-  lr0_set_cache = ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_lr0_set),
-                                     ULIB_CACHE_ALIGN, sizeof (void *),
-                                     ULIB_CACHE_CTOR, lr0_set_ctor,
-                                     ULIB_CACHE_CLEAR, lr0_set_clear,
-                                     ULIB_CACHE_DTOR, lr0_set_dtor,
-                                     ULIB_CACHE_GC,
-                                     0);
-  if (lr0_set_cache)
+  lr0set_cache = ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_lr0set),
+                                    ULIB_CACHE_ALIGN, sizeof (void *),
+                                    ULIB_CACHE_CTOR, lr0set_ctor,
+                                    ULIB_CACHE_CLEAR, lr0set_clear,
+                                    ULIB_CACHE_DTOR, lr0set_dtor,
+                                    ULIB_CACHE_GC,
+                                    0);
+  if (lr0set_cache)
     return 0;
   else
     {

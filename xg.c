@@ -89,8 +89,7 @@ main (int argc, char *argv [])
     }
 
   /* Initialize memory management.  */
-  if (xg__init_grammar () < 0
-      || xg__init_lr0_sets () < 0)
+  if (xg__init_grammar () < 0 || xg__init_lr0sets () < 0)
     goto error;
 
   /* Parse the input file. */
@@ -98,8 +97,7 @@ main (int argc, char *argv [])
     goto error;
 
   /* Compute FIRST and FOLLOW sets.  */
-  if (xg_grammar_compute_first (g) < 0
-      || xg_grammar_compute_follow (g) < 0)
+  if (xg_grammar_compute_first (g) < 0 || xg_grammar_compute_follow (g) < 0)
     goto error;
 
   xg_grammar_debug (stdout, g);

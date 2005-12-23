@@ -258,14 +258,14 @@ getlex (parse_ctx *ctx)
 
 /* Find or create a symbol with name NAME.  In either case the
    function consumes the NAME parameter.  */
-static xg_symbol_def *
+static xg_symdef *
 find_or_create_symbol (parse_ctx *ctx, char *name)
 {
-  xg_symbol_def *def;
+  xg_symdef *def;
 
   if ((def = xg_symtab_lookup (&ctx->symtab, name)) == 0)
     {
-      if ((def = xg_symbol_new (name)) == 0)
+      if ((def = xg_symdef_new (name)) == 0)
         {
           xg_free (name);
           return 0;
@@ -282,20 +282,20 @@ find_or_create_symbol (parse_ctx *ctx, char *name)
 }
 
 static int
-parse_symbol_list (parse_ctx *ctx, xg_production *prod)
+parse_symbol_list (parse_ctx *ctx, xg_prod *prod)
 {
-  xg_symbol_def *def;
+  xg_symdef *def;
   while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
     {
       if (ctx->token == TOKEN_WORD)
         {
           if ((def = find_or_create_symbol (ctx, ctx->value.word)) == 0
-              || xg_production_add (prod, def->code) < 0)
+              || xg_prod_add (prod, def->code) < 0)
             return -1;
         }
       else /* ctx->token == TOKEN_LITERAL */
         {
-          if (xg_production_add (prod, ctx->value.chr) < 0)
+          if (xg_prod_add (prod, ctx->value.chr) < 0)
             return -1;
         }
 
@@ -307,23 +307,23 @@ parse_symbol_list (parse_ctx *ctx, xg_production *prod)
 }
 
 static int
-parse_rhs_alternative (parse_ctx *ctx, xg_symbol_def *lhs)
+parse_rhs_alternative (parse_ctx *ctx, xg_symdef *lhs)
 {
-  xg_production *prod;
+  xg_prod *prod;
 
   /* Create a production for the alternaive and parse its right hand
      side.  Add the production to the grammar.  */
-  if ((prod = xg_production_new (lhs->code)) == 0
+  if ((prod = xg_prod_new (lhs->code)) == 0
       || parse_symbol_list (ctx, prod) < 0
-      || xg_grammar_add_production (ctx->gram, prod) < 0
-      || xg_symbol_def_add_production (lhs, xg_grammar_production_count (ctx->gram) - 1) < 0)
+      || xg_grammar_add_prod (ctx->gram, prod) < 0
+      || xg_symdef_add_prod (lhs, xg_grammar_prod_count (ctx->gram) - 1) < 0)
     return -1;
   else
     return 0;
 }
 
 static int
-parse_rhs (parse_ctx *ctx, xg_symbol_def *lhs)
+parse_rhs (parse_ctx *ctx, xg_symdef *lhs)
 {
   /* Parse the first alternative.  */
   if (parse_rhs_alternative (ctx, lhs) < 0)
@@ -343,7 +343,7 @@ parse_rhs (parse_ctx *ctx, xg_symbol_def *lhs)
 static int
 parse_prod (parse_ctx *ctx)
 {
-  xg_symbol_def *lhs;
+  xg_symdef *lhs;
 
   /* Match the left hand side.  */
   if (ctx->token != TOKEN_WORD)
@@ -382,7 +382,7 @@ parse_prod (parse_ctx *ctx)
 static int
 parse_start_directive (parse_ctx *ctx)
 {
-  xg_symbol_def *start_sym;
+  xg_symdef *start_sym;
 
   if (getlex (ctx) < 0)
     return -1;
@@ -445,8 +445,8 @@ xg_grammar_read (const char *name)
   int sts;
   parse_ctx ctx;
   char *start_name;
-  xg_symbol_def *start_sym;
-  xg_production *start;
+  xg_symdef *start_sym;
+  xg_prod *start;
 
   /* Initialize the parser context.  */
   ctx.name = name;
@@ -465,8 +465,8 @@ xg_grammar_read (const char *name)
               /* Create the start production and add it ro the
                  grammar.  Production details will be filled
                  later.  */
-              if ((start = xg_production_new (0)) != 0
-                  && xg_grammar_add_production (ctx.gram, start) == 0)
+              if ((start = xg_prod_new (0)) != 0
+                  && xg_grammar_add_prod (ctx.gram, start) == 0)
                 {
                   /* Parse the grammar description.  */
                   sts = parse_decls (&ctx);
@@ -492,7 +492,7 @@ xg_grammar_read (const char *name)
     goto error;
 
   strcpy (start_name, "<start>");
-  if ((start_sym = xg_symbol_new (start_name)) == 0)
+  if ((start_sym = xg_symdef_new (start_name)) == 0)
     goto error_name;
   start_sym->terminal = 0;
   if ((start_sym->code = xg_grammar_add_symbol (ctx.gram, start_sym)) < 0)
@@ -501,7 +501,7 @@ xg_grammar_read (const char *name)
   /* Fill the start production details.  */
   if (ctx.gram->start == 0)
     {
-      start = xg_grammar_get_production (ctx.gram, 1);
+      start = xg_grammar_get_prod (ctx.gram, 1);
       if (start == 0)
         {
           ulib_log_printf (xg_log, "ERROR: Grammar has no productions");
@@ -511,9 +511,9 @@ xg_grammar_read (const char *name)
     }
 
   /* Create the grammar augmentation.  */
-  start = xg_grammar_get_production (ctx.gram, 0);
+  start = xg_grammar_get_prod (ctx.gram, 0);
   start->lhs = start_sym->code;
-  if (xg_production_add (start, ctx.gram->start) < 0)
+  if (xg_prod_add (start, ctx.gram->start) < 0)
     goto error;
 
   ctx.gram->start = start_sym->code;
