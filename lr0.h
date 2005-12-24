@@ -1,4 +1,4 @@
-/* lr0.h - LR(0) set declarations
+/* lr0.h - LR(0) DFA declarations
  *
  * Copyright (C) 2005 Momchil Velikov
  *
@@ -40,42 +40,43 @@ struct xg_lr0item
 };
 typedef struct xg_lr0item xg_lr0item;
 
-/* An LR(0) item set/State in the  DFA for viable prefixes.  */
-struct xg_lr0set
+/* A state in the LR(0) DFA for viable prefixes.  */
+struct xg_lr0state
 {
   /* LR(0) items.  */
   ulib_vector items;
 };
-typedef struct xg_lr0set xg_lr0set;
+typedef struct xg_lr0state xg_lr0state;
 
-/* Create an LR(0) set.  */
-xg_lr0set *xg_lr0set_new ();
+/* Create an LR(0) DFA state.  */
+xg_lr0state *xg_lr0state_new ();
 
-/* Add the item <PROD,DOT> to the set, if not already present.  Return
-   negative on error, positive if the set changed (item not present)
-   or zero otherwise.  */
-int xg_lr0set_add_item (xg_lr0set *set, unsigned int prod, unsigned int dot);
+/* Add the item <PROD,DOT> to the state, if not already present.
+   Return negative on error, positive if the state changed (item not
+   present) or zero otherwise.  */
+int xg_lr0state_add_item (xg_lr0state *set, unsigned int prod,
+                          unsigned int dot);
 
-/* Return the number of items in the set.  */
-unsigned int xg_lr0set_count (const xg_lr0set *set);
+/* Return the number of LR(0) items in the state.  */
+unsigned int xg_lr0state_count (const xg_lr0state *state);
 
-/* Return the Nth item in the set.  */
-xg_lr0item *xg_lr0set_get_item (const xg_lr0set *set, unsigned int n);
+/* Return the Nth item in the state.  */
+xg_lr0item *xg_lr0state_get_item (const xg_lr0state *state, unsigned int n);
 
-/* Compute the closure of an LR(0) set.  */
-int xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set);
+/* Compute the closure of an LR(0) state.  */
+int xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state);
 
-/* Compute the goto (SET, SYM) function.  */
-xg_lr0set *xg_lr0set_goto (const xg_grammar *g, const xg_lr0set *src,
-                           xg_sym sym);
+/* Compute the goto (STATE, SYM) function.  */
+xg_lr0state *xg_lr0state_goto (const xg_grammar *g, const xg_lr0state *src,
+                               xg_sym sym);
 
-/* Display a debugging dump of an LR(0) set.  */
-void xg_lr0set_debug (FILE *out, const struct xg_grammar *g,
-                      const xg_lr0set *set);
+/* Display a debugging dump of an LR(0) state.  */
+void xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
+                        const xg_lr0state *state);
 
 
-/* Initialize LR(0) sets memory management.  */
-int xg__init_lr0sets ();
+/* Initialize LR(0) DFA memory management.  */
+int xg__init_lr0states ();
 
 END_DECLS
 
