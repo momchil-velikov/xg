@@ -22,6 +22,7 @@
 #ifndef xg__lr0_h
 #define xg__lr0_h 1
 
+#include "grammar.h"
 #include <ulib/defs.h>
 #include <ulib/vector.h>
 #include <stdio.h>
@@ -62,8 +63,11 @@ unsigned int xg_lr0set_count (const xg_lr0set *set);
 xg_lr0item *xg_lr0set_get_item (const xg_lr0set *set, unsigned int n);
 
 /* Compute the closure of an LR(0) set.  */
-struct xg_grammar;
-int xg_lr0set_closure (const struct xg_grammar *g, xg_lr0set *set);
+int xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set);
+
+/* Compute the goto (SET, SYM) function.  */
+xg_lr0set *xg_lr0set_goto (const xg_grammar *g, const xg_lr0set *src,
+                           xg_sym sym);
 
 /* Display a debugging dump of an LR(0) set.  */
 void xg_lr0set_debug (FILE *out, const struct xg_grammar *g,

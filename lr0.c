@@ -217,6 +217,37 @@ xg_lr0set_closure (const xg_grammar *g, xg_lr0set *set)
   return sts;
 }
 
+/* Compute the goto (SET, SYM) function.  */
+xg_lr0set *
+xg_lr0set_goto (const xg_grammar *g, const xg_lr0set *src, xg_sym sym)
+{
+  unsigned int i, n;
+  xg_lr0set *dst;
+  xg_lr0item *it;
+  xg_prod *p;
+
+  if ((dst = xg_lr0set_new ()) == 0)
+    return 0;
+
+  n = xg_lr0set_count (src);
+  for (i = 0; i < n; ++i)
+    {
+      it = xg_lr0set_get_item (src, i);
+      p = xg_grammar_get_prod (g, it->prod);
+      if (it->dot < xg_prod_length (p)
+          && sym == xg_prod_get_symbol (p, it->dot))
+        {
+          if (xg_lr0set_add_item (dst, it->prod, it->dot + 1) < 0)
+            return 0;
+        }
+    }
+
+  if (xg_lr0set_closure (g, dst) < 0)
+    return 0;
+
+  return dst;
+}
+
 /* Display a debugging dump of an LR(0) set.  */
 void
 xg_lr0set_debug (FILE *out, const struct xg_grammar *g,
