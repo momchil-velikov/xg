@@ -33,11 +33,16 @@ static ulib_cache *lr0state_cache;
 static int
 lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
-  if (ulib_vector_init (&state->items, ULIB_ELT_SIZE, sizeof (xg_lr0item), 0)
-      < 0)
-    return -1;
-  else
-    return 0;
+  if (ulib_vector_init (&state->items,
+                        ULIB_ELT_SIZE, sizeof (xg_lr0item), 0) == 0)
+    {
+      if (ulib_vector_init (&state->edges,
+                            ULIB_ELT_SIZE, sizeof (xg_lr0edge), 0) == 0)
+        return 0;
+      ulib_vector_destroy (&state->items);
+    }
+
+  return -1;
 }
 
 /* LR(0) state clear.  */
@@ -45,6 +50,7 @@ static void
 lr0state_clear (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_set_size (&state->items, 0);
+  ulib_vector_set_size (&state->edges, 0);
 }
 
 /* LR(0) state destructor.  */
@@ -52,6 +58,7 @@ static void
 lr0state_dtor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_destroy (&state->items);
+  ulib_vector_destroy (&state->edges);
 }
 
 
@@ -89,8 +96,8 @@ xg_lr0state_add_item (xg_lr0state *state, unsigned int prod, unsigned int dot)
     {
       it = ulib_vector_back (&state->items);
 
-      it [-1].prod = prod;
-      it [-1].dot = dot;
+      it[-1].prod = prod;
+      it[-1].dot = dot;
 
       return 1;
     }
@@ -101,7 +108,7 @@ xg_lr0state_add_item (xg_lr0state *state, unsigned int prod, unsigned int dot)
 
 /* Return the number of items in the state.  */
 unsigned int
-xg_lr0state_count (const xg_lr0state *state)
+xg_lr0state_item_count (const xg_lr0state *state)
 {
   return ulib_vector_length (&state->items);
 }
@@ -113,6 +120,56 @@ xg_lr0state_get_item (const xg_lr0state *state, unsigned int n)
   return ulib_vector_elt (&state->items, n);
 }
 
+/* Return a pointer to an array of LR(0) items.  The pointer is
+   possibly invalidated after adding an item to the set.  */
+xg_lr0item *
+xg_lr0state_items_front (const xg_lr0state *state)
+{
+  return ulib_vector_front (&state->items);
+}
+
+/* Return a pointer just after last LR(0) item.  The pointer is
+   possibly invalidated after adding an item to the set.  */
+xg_lr0item *
+xg_lr0state_items_back (const xg_lr0state *state)
+{
+  return ulib_vector_back (&state->items);
+}
+
+/* Add an edge to an LR(0) state.  */
+int
+xg_lr0state_add_edge (xg_lr0state *state, xg_sym label, unsigned int dst)
+{
+  xg_lr0edge *e;
+
+  if (ulib_vector_resize (&state->edges, 1) == 0)
+    {
+      e = ulib_vector_back (&state->edges);
+
+      e[-1].sym = label;
+      e[-1].state = dst;
+
+      return 0;
+    }
+
+  ulib_log_printf (xg_log, "ERROR: Unable to append an LR(0) DFA edge");
+  return -1;
+}
+
+/* Get edge count.  */
+unsigned int
+xg_lr0state_edge_count (const xg_lr0state *state)
+{
+  return ulib_vector_length (&state->edges);
+}
+
+/* Get an outgoing edge.  */
+const xg_lr0edge *
+xg_lr0state_get_edge (const xg_lr0state *state, unsigned int n)
+{
+  return ulib_vector_elt (&state->edges, n);
+}
+
 /* Sort the items in an LR(0) state.  */
 static void
 lr0state_sort (xg_lr0state *state)
@@ -120,7 +177,7 @@ lr0state_sort (xg_lr0state *state)
   unsigned int i, n, tmp;
   xg_lr0item *a, *b;
 
-  n = xg_lr0state_count (state);
+  n = xg_lr0state_item_count (state);
   while (n--)
     {
       a = xg_lr0state_get_item (state, 0);
@@ -153,12 +210,12 @@ lr0state_closure (const xg_grammar *g, xg_lr0state *state, ulib_bitset *done)
   xg_symdef *def;
   const xg_lr0item *it;
   const xg_prod *p;
- 
+
   /* Get the next LR(0) item.  If the dot is in front of a terminal,
      skip the item, otherwise add to the state an item with the dot at
      the front for each production having the symbol as its left hand
      side.  Do not add duplicate items.  */
-  for (i = 0; i < xg_lr0state_count (state); ++i)
+  for (i = 0; i < xg_lr0state_item_count (state); ++i)
     {
       /* Get next item, the production and the symbol following the
          dot.  */
@@ -202,7 +259,7 @@ xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state)
   int sts;
   ulib_bitset done;
 
-  /* Create a set record already expanded non-terminal symbols.  */
+  /* Create a set to record already expanded non-terminal symbols.  */
   if (ulib_bitset_init (&done) < 0)
     {
       ulib_log_printf (xg_log,
@@ -210,10 +267,10 @@ xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state)
       return -1;
     }
 
-  sts = lr0state_closure(g, state, &done);
-  
+  sts = lr0state_closure (g, state, &done);
+
   ulib_bitset_destroy (&done);
-  
+
   return sts;
 }
 
@@ -229,7 +286,7 @@ xg_lr0state_goto (const xg_grammar *g, const xg_lr0state *src, xg_sym sym)
   if ((dst = xg_lr0state_new ()) == 0)
     return 0;
 
-  n = xg_lr0state_count (src);
+  n = xg_lr0state_item_count (src);
   for (i = 0; i < n; ++i)
     {
       it = xg_lr0state_get_item (src, i);
@@ -248,21 +305,50 @@ xg_lr0state_goto (const xg_grammar *g, const xg_lr0state *src, xg_sym sym)
   return dst;
 }
 
+/* Compare two LR(0) states for equality.  */
+static int
+lr0set_equal (const xg_lr0state *a, const xg_lr0state *b)
+{
+  unsigned int i, n;
+  xg_lr0item *ai, *bi;
+
+  /* Sets are not equal if their sizes differ.  */
+  n = xg_lr0state_item_count (a);
+  if (n != xg_lr0state_item_count (b))
+    return 0;
+
+  /* Compare each item.  Note that the states are sorted, thus first
+     item difference indicates states differ also.  */
+  for (i = 0; i < n; ++i)
+    {
+      ai = xg_lr0state_get_item (a, i);
+      bi = xg_lr0state_get_item (b, i);
+
+      if (ai->prod != bi->prod || ai->dot != bi->dot)
+        return 0;
+    }
+
+  return 1;
+}
+
 /* Display a debugging dump of an LR(0) state.  */
 void
 xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
-                  const xg_lr0state *state)
+                   const xg_lr0state *state)
 {
   unsigned int i, j, n, m;
   xg_prod *p;
   const xg_lr0item *it;
+  const xg_lr0edge *e;
 
-  n = xg_lr0state_count (state);
+  /* Dump items.  */
+  n = xg_lr0state_item_count (state);
   for (i = 0; i < n; ++i)
     {
       it = xg_lr0state_get_item (state, i);
       p = xg_grammar_get_prod (g, it->prod);
 
+      fprintf (out, "\titem %u: ", i);
       xg_symbol_name_debug (out, g, p->lhs);
       fputs (" ->", out);
 
@@ -275,7 +361,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
       fputs (" .", out);
 
       m = xg_prod_length (p);
-      for (;j < m; ++j)
+      for (; j < m; ++j)
         {
           fputc (' ', out);
           xg_symbol_name_debug (out, g, xg_prod_get_symbol (p, j));
@@ -283,20 +369,210 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
 
       fputc ('\n', out);
     }
+
+
+  /* Dump edges.  */
+  fputc ('\n', out);
+  n = xg_lr0state_edge_count (state);
+  for (i = 0; i < n; ++i)
+    {
+      e = xg_lr0state_get_edge (state, i);
+      fprintf (out, "\tedge %u: label: ", i);
+      xg_symbol_name_debug (out, g, e->sym);
+      fprintf (out, " dst: %u\n", e->state);
+    }
 }
 
 
-/* Initialize LR(0) states memory management.  */
+/* Add a state to an LR(0) DFA.  Return an index of an LR(0) DFA
+   state, which may not refer to S, if a state, which compares equal
+   to S, already exists.  Return negative on error.  */
+static int
+lr0dfa_add_state (xg_lr0dfa *dfa, xg_lr0state *s)
+{
+  unsigned int n;
+  xg_lr0state **old;
+
+  n = ulib_vector_length (&dfa->states);
+  old = ulib_vector_front (&dfa->states);
+  while (n--)
+    {
+      if (lr0set_equal (*old, s))
+        return old - (xg_lr0state **) ulib_vector_front (&dfa->states);
+      ++old;
+    }
+
+  if (ulib_vector_append_ptr (&dfa->states, s) < 0)
+    return -1;
+  else
+    return ulib_vector_length (&dfa->states) - 1;
+}
+
+/* Create the LR(0) DFA.  */
+static int
+lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
+{
+  int no;
+  unsigned int i;
+  xg_lr0state *src, *dst;
+  const xg_lr0item *it, *end;
+  const xg_prod *p;
+  xg_sym sym;
+  ulib_bitset trans_done, closure_done;
+
+  /* Start at the closure of the LR(0) item <0, 0>.  */
+  if ((src = xg_lr0state_new ()) == 0
+      || xg_lr0state_add_item (src, 0, 0) < 0
+      || xg_lr0state_closure (g, src) < 0
+      || ulib_vector_append_ptr (&dfa->states, src) < 0)
+    return -1;
+
+  /* Initialize done sets.  */
+  if (ulib_bitset_init (&trans_done) < 0)
+    return -1;
+  if (ulib_bitset_init (&closure_done) < 0)
+    goto error0;
+
+  /* Walk over unprocessed states.  */
+  for (i = 0; i < ulib_vector_length (&dfa->states); ++i)
+    {
+      src = ulib_vector_ptr_elt (&dfa->states, i);
+
+      /* Walk over the items and compute each possible transition.  */
+      it = xg_lr0state_items_front (src);
+      end = xg_lr0state_items_back (src);
+      while (it < end)
+        {
+          p = xg_grammar_get_prod (g, it->prod);
+          if (it->dot < xg_prod_length (p))
+            {
+              sym = xg_prod_get_symbol (p, it->dot);
+              if (ulib_bitset_is_set (&trans_done, sym) == 0)
+                {
+                  /* Compute the transition on SYM.  */
+                  if (ulib_bitset_set (&trans_done, sym) < 0
+                      || (dst = xg_lr0state_goto (g, src, sym)) == 0
+                      || (no = lr0dfa_add_state (dfa, dst)) < 0
+                      || xg_lr0state_add_edge (src, sym, no) < 0)
+                    goto error;
+                }
+            }
+          ++it;
+        }
+      ulib_bitset_clear_all (&trans_done);
+    }
+
+  ulib_bitset_destroy (&closure_done);
+  ulib_bitset_destroy (&trans_done);
+  return 0;
+
+error:
+  ulib_bitset_destroy (&closure_done);
+error0:
+  ulib_bitset_destroy (&trans_done);
+  return -1;
+}
+
+/* LR(0) DFA pointer scan function.  */
+static int
+lr0dfa_gcscan (xg_lr0dfa *dfa, void **ptr, unsigned int sz)
+{
+  unsigned int i, n;
+  xg_lr0state **state;
+
+  n = ulib_vector_length (&dfa->states);
+  if (n > sz)
+    return -n;
+
+  state = ulib_vector_front (&dfa->states);
+  for (i = 0; i < n; ++i)
+    *ptr++ = *state++;
+
+  return n;
+}
+
+/* Create an LR(0) DFA.  */
+xg_lr0dfa *
+xg_lr0dfa_new (const xg_grammar *g)
+{
+  xg_lr0dfa *dfa;
+
+  if ((dfa = malloc (sizeof (xg_lr0dfa))) != 0)
+    {
+      if (ulib_vector_init (&dfa->states, ULIB_DATA_PTR_VECTOR, 0) == 0)
+        {
+
+          if (lr0dfa_create (g, dfa) == 0)
+            {
+              if (ulib_gcroot (dfa, (ulib_gcscan_func) lr0dfa_gcscan) == 0)
+                return dfa;
+            }
+
+          ulib_vector_destroy (&dfa->states);
+        }
+
+      free (dfa);
+    }
+
+  ulib_log_printf (xg_log, "ERROR: Out of memory creating LR(0) DFA");
+  return 0;
+}
+
+/* Delete an LR(0) DFA.  */
+void
+xg_lr0dfa_del (xg_lr0dfa *dfa)
+{
+  ulib_gcunroot (dfa);
+  ulib_vector_destroy (&dfa->states);
+  free (dfa);
+}
+
+/* Get the number of LR(0) DFA states.  */
+unsigned int
+xg_lr0dfa_state_count (const xg_lr0dfa *dfa)
+{
+  return ulib_vector_length (&dfa->states);
+}
+
+/* Get the N-th  LR(0) DFA state.  */
+xg_lr0state *
+xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n)
+{
+  return ulib_vector_ptr_elt (&dfa->states, n);
+}
+
+
+/* Display a debugging dump of an LR(0) DFA.  */
+void
+xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
+{
+  unsigned int i, n;
+  xg_lr0state *state;
+
+  fputs ("LR(0) DFA:\n", out);
+  fputs ("==========\n\n", out);
+
+  n = xg_lr0dfa_state_count (dfa);
+  for (i = 0; i < n; ++i)
+    {
+      state = xg_lr0dfa_get_state (dfa, i);
+      fprintf (out, "State %u:\n", i);
+      xg_lr0state_debug (out, g, state);
+      fputc ('\n', out);
+    }
+}
+
+
+/* Initialize LR(0) DFA memory management.  */
 int
-xg__init_lr0states ()
+xg__init_lr0dfa ()
 {
   lr0state_cache = ulib_cache_create (ULIB_CACHE_SIZE, sizeof (xg_lr0state),
                                       ULIB_CACHE_ALIGN, sizeof (void *),
                                       ULIB_CACHE_CTOR, lr0state_ctor,
                                       ULIB_CACHE_CLEAR, lr0state_clear,
                                       ULIB_CACHE_DTOR, lr0state_dtor,
-                                      ULIB_CACHE_GC,
-                                      0);
+                                      ULIB_CACHE_GC, 0);
   if (lr0state_cache)
     return 0;
   else

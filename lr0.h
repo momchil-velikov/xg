@@ -40,11 +40,25 @@ struct xg_lr0item
 };
 typedef struct xg_lr0item xg_lr0item;
 
+/* An edge in the LR(0) DFA.  */
+struct xg_lr0edge
+{
+  /* Edge label.  */
+  xg_sym sym;
+
+  /* Destination state. */
+  unsigned int state;
+};
+typedef struct xg_lr0edge xg_lr0edge;
+
 /* A state in the LR(0) DFA for viable prefixes.  */
 struct xg_lr0state
 {
   /* LR(0) items.  */
   ulib_vector items;
+
+  /* Outgoing edges.  */
+  ulib_vector edges;
 };
 typedef struct xg_lr0state xg_lr0state;
 
@@ -58,10 +72,28 @@ int xg_lr0state_add_item (xg_lr0state *set, unsigned int prod,
                           unsigned int dot);
 
 /* Return the number of LR(0) items in the state.  */
-unsigned int xg_lr0state_count (const xg_lr0state *state);
+unsigned int xg_lr0state_item_count (const xg_lr0state *state);
 
-/* Return the Nth item in the state.  */
+/* Return the N-th item in the state.  */
 xg_lr0item *xg_lr0state_get_item (const xg_lr0state *state, unsigned int n);
+
+/* Return a pointer to an array of LR(0) items.  The pointer is
+   possibly invalidated after adding an item to the set.  */
+xg_lr0item *xg_lr0state_items_front (const xg_lr0state *state);
+
+/* Return a pointer just after last LR(0) item.  The pointer is
+   possibly invalidated after adding an item to the set.  */
+xg_lr0item *xg_lr0state_items_back (const xg_lr0state *state);
+
+/* Add an edge to an LR(0) state.  */
+int xg_lr0state_add_edge (xg_lr0state *state, xg_sym label, unsigned int dst);
+
+/* Get edge count.  */
+unsigned int xg_lr0state_edge_count (const xg_lr0state *state);
+
+/* Get an outgoing edge.  */
+const xg_lr0edge *xg_lr0state_get_edge (const xg_lr0state *state,
+                                        unsigned int n);
 
 /* Compute the closure of an LR(0) state.  */
 int xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state);
@@ -71,12 +103,36 @@ xg_lr0state *xg_lr0state_goto (const xg_grammar *g, const xg_lr0state *src,
                                xg_sym sym);
 
 /* Display a debugging dump of an LR(0) state.  */
-void xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
+void xg_lr0state_debug (FILE *out, const xg_grammar *g,
                         const xg_lr0state *state);
 
 
+/* LR(0) DFA.  */
+struct xg_lr0dfa
+{
+  /* Automaton states (pointers).  */
+  ulib_vector states;
+};
+typedef struct xg_lr0dfa xg_lr0dfa;
+
+/* Create an LR(0) DFA.  */
+xg_lr0dfa *xg_lr0dfa_new (const xg_grammar *g);
+
+/* Delete an LR(0) DFA.  */
+void xg_lr0dfa_del (xg_lr0dfa *dfa);
+
+/* Get the number of LR(0) DFA states.  */
+unsigned int xg_lr0dfa_state_count (const xg_lr0dfa *dfa);
+
+/* Get the N-th  LR(0) DFA state.  */
+xg_lr0state *xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n);
+
+/* Display a debugging dump of an LR(0) DFA.  */
+void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
+
+
 /* Initialize LR(0) DFA memory management.  */
-int xg__init_lr0states ();
+int xg__init_lr0dfa ();
 
 END_DECLS
 
