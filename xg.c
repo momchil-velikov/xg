@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include "grammar.h"
 #include "lr0.h"
+#include "gen-c-slr.h"
 #include "xg.h"
 #include <ulib/cache.h>
 
@@ -103,11 +104,12 @@ main (int argc, char *argv [])
   if (1)
     {
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
-      xg_lr0dfa_debug (stdout, g, dfa);
+      xg_lr0dfa_debug (stderr, g, dfa);
+      xg_gen_c_slr (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
     }
 
-  xg_grammar_debug (stdout, g);
+  xg_grammar_debug (stderr, g);
   xg_grammar_del (g);
   ulib_gcrun ();
   return 0;
