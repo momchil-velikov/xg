@@ -474,7 +474,7 @@ xg_grammar_debug (FILE *out, const xg_grammar *g)
   xg_prod *p;
   xg_symdef *def;
 
-  fputs ("Productions:\n------------\n\n", out);
+  fputs ("\nProductions:\n============\n\n", out);
   n = xg_grammar_prod_count (g);
   for (i = 0; i < n; ++i)
     {
@@ -483,7 +483,7 @@ xg_grammar_debug (FILE *out, const xg_grammar *g)
       xg_prod_debug (out, g, p);
     }
 
-  fputs ("Symbols:\n--------\n\n", out);
+  fputs ("\nSymbols:\n========\n\n", out);
   n = ulib_vector_length (&g->syms);
   for (i = 0; i < n; ++i)
     {

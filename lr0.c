@@ -36,8 +36,8 @@ lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
   if (ulib_vector_init (&state->items,
                         ULIB_ELT_SIZE, sizeof (xg_lr0item), 0) == 0)
     {
-      if (ulib_vector_init (&state->edges,
-                            ULIB_ELT_SIZE, sizeof (xg_lr0edge), 0) == 0)
+      if (ulib_vector_init (&state->axns,
+                            ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0) == 0)
         return 0;
       ulib_vector_destroy (&state->items);
     }
@@ -50,7 +50,7 @@ static void
 lr0state_clear (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_set_size (&state->items, 0);
-  ulib_vector_set_size (&state->edges, 0);
+  ulib_vector_set_size (&state->axns, 0);
 }
 
 /* LR(0) state destructor.  */
@@ -58,7 +58,7 @@ static void
 lr0state_dtor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_destroy (&state->items);
-  ulib_vector_destroy (&state->edges);
+  ulib_vector_destroy (&state->axns);
 }
 
 
@@ -136,38 +136,58 @@ xg_lr0state_items_back (const xg_lr0state *state)
   return ulib_vector_back (&state->items);
 }
 
-/* Add an edge to an LR(0) state.  */
+/* Add a parse action to an LR(0) state.  */
 int
-xg_lr0state_add_edge (xg_lr0state *state, xg_sym label, unsigned int dst)
+xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,
+                     unsigned int no)
 {
-  xg_lr0edge *e;
+  xg_lr0axn *begin, *axn, *end;
 
-  if (ulib_vector_resize (&state->edges, 1) == 0)
+  /* Find whether there are already other actions on SYM.  */
+  begin = ulib_vector_front (&state->axns);
+  end = ulib_vector_back (&state->axns);
+  for (axn = begin; axn < end; ++axn)
     {
-      e = ulib_vector_back (&state->edges);
-
-      e[-1].sym = label;
-      e[-1].state = dst;
-
-      return 0;
+      if (axn->sym == sym)
+        {
+          /* Lookahead symbol found, insert the action so actions on
+             the same lookaheads are adjiacent.  */
+          xg_lr0axn act = { sym, shift, no };
+          if (ulib_vector_insert (&state->axns, axn - begin, &act) < 0)
+            goto error;
+          return 0;
+        }
     }
 
-  ulib_log_printf (xg_log, "ERROR: Unable to append an LR(0) DFA edge");
+  /* First action on this lookahead.  */
+  if (ulib_vector_resize (&state->axns, 1) < 0)
+    goto error;
+
+  axn = ulib_vector_back (&state->axns);
+
+  axn [-1].sym = sym;
+  axn [-1].shift = shift;
+  axn [-1].no = no;
+
+  return 0;
+
+error:
+  ulib_log_printf (xg_log, "ERROR: Unable to append a parse action.");
   return -1;
 }
 
-/* Get edge count.  */
+/* Get parse action count.  */
 unsigned int
-xg_lr0state_edge_count (const xg_lr0state *state)
+xg_lr0state_axn_count (const xg_lr0state *state)
 {
-  return ulib_vector_length (&state->edges);
+  return ulib_vector_length (&state->axns);
 }
 
-/* Get an outgoing edge.  */
-const xg_lr0edge *
-xg_lr0state_get_edge (const xg_lr0state *state, unsigned int n)
+/* Get a parse action.  */
+const xg_lr0axn *
+xg_lr0state_get_axn (const xg_lr0state *state, unsigned int n)
 {
-  return ulib_vector_elt (&state->edges, n);
+  return ulib_vector_elt (&state->axns, n);
 }
 
 /* Sort the items in an LR(0) state.  */
@@ -339,7 +359,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
   unsigned int i, j, n, m;
   xg_prod *p;
   const xg_lr0item *it;
-  const xg_lr0edge *e;
+  const xg_lr0axn *axn;
 
   /* Dump items.  */
   n = xg_lr0state_item_count (state);
@@ -348,7 +368,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
       it = xg_lr0state_get_item (state, i);
       p = xg_grammar_get_prod (g, it->prod);
 
-      fprintf (out, "\titem %u: ", i);
+      fprintf (out, "\t%u: ", it->prod);
       xg_symbol_name_debug (out, g, p->lhs);
       fputs (" ->", out);
 
@@ -371,15 +391,20 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
     }
 
 
-  /* Dump edges.  */
+  /* Dump actions.  */
   fputc ('\n', out);
-  n = xg_lr0state_edge_count (state);
+  n = xg_lr0state_axn_count (state);
   for (i = 0; i < n; ++i)
     {
-      e = xg_lr0state_get_edge (state, i);
-      fprintf (out, "\tedge %u: label: ", i);
-      xg_symbol_name_debug (out, g, e->sym);
-      fprintf (out, " dst: %u\n", e->state);
+      axn = xg_lr0state_get_axn (state, i);
+
+      fputs ("\tOn ", out);
+      xg_symbol_name_debug (out, g, axn->sym);
+
+      if (axn->shift)
+        fprintf (out, " shift and go to state %u\n", axn->no);
+      else
+        fprintf (out, " reduce by production %u\n", axn->no);
     }
 }
 
@@ -413,11 +438,12 @@ static int
 lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
 {
   int no;
-  unsigned int i;
+  unsigned int i, j, n;
   xg_lr0state *src, *dst;
   const xg_lr0item *it, *end;
   const xg_prod *p;
   xg_sym sym;
+  xg_symdef *def;
   ulib_bitset trans_done, closure_done;
 
   /* Start at the closure of the LR(0) item <0, 0>.  */
@@ -438,7 +464,8 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
     {
       src = ulib_vector_ptr_elt (&dfa->states, i);
 
-      /* Walk over the items and compute each possible transition.  */
+      /* Walk over the items and compute each possible parser
+         action.  */
       it = xg_lr0state_items_front (src);
       end = xg_lr0state_items_back (src);
       while (it < end)
@@ -446,6 +473,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
           p = xg_grammar_get_prod (g, it->prod);
           if (it->dot < xg_prod_length (p))
             {
+              /* Shift actions.  */
               sym = xg_prod_get_symbol (p, it->dot);
               if (ulib_bitset_is_set (&trans_done, sym) == 0)
                 {
@@ -453,7 +481,20 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                   if (ulib_bitset_set (&trans_done, sym) < 0
                       || (dst = xg_lr0state_goto (g, src, sym)) == 0
                       || (no = lr0dfa_add_state (dfa, dst)) < 0
-                      || xg_lr0state_add_edge (src, sym, no) < 0)
+                      || xg_lr0state_add_axn (src, sym, 1, no) < 0)
+                    goto error;
+                }
+            }
+          else
+            {
+              /* Reduce actions.  */
+              def = xg_grammar_get_symbol (g, p->lhs);
+
+              n = ulib_bitset_max (&def->follow);
+              for (j = 0; j < n; ++j)
+                {
+                  if (ulib_bitset_is_set (&def->follow, j)
+                      && xg_lr0state_add_axn (src, j, 0, it->prod) < 0)
                     goto error;
                 }
             }

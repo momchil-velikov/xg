@@ -100,6 +100,13 @@ main (int argc, char *argv [])
   if (xg_grammar_compute_first (g) < 0 || xg_grammar_compute_follow (g) < 0)
     goto error;
 
+  if (1)
+    {
+      xg_lr0dfa *dfa = xg_lr0dfa_new (g);
+      xg_lr0dfa_debug (stdout, g, dfa);
+      xg_lr0dfa_del (dfa);
+    }
+
   xg_grammar_debug (stdout, g);
   xg_grammar_del (g);
   ulib_gcrun ();

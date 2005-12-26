@@ -40,16 +40,20 @@ struct xg_lr0item
 };
 typedef struct xg_lr0item xg_lr0item;
 
-/* An edge in the LR(0) DFA.  */
-struct xg_lr0edge
+/* A parse action in an LR(0) DFA state.  */
+struct xg_lr0axn
 {
-  /* Edge label.  */
+  /* Lookahead.  */
   xg_sym sym;
 
-  /* Destination state. */
-  unsigned int state;
+  /* Shift or reduce (non-terminal transitions are encodef as
+     shifts).  */
+  unsigned int shift;
+
+  /* State or production number.  */
+  unsigned int no;
 };
-typedef struct xg_lr0edge xg_lr0edge;
+typedef struct xg_lr0axn xg_lr0axn;
 
 /* A state in the LR(0) DFA for viable prefixes.  */
 struct xg_lr0state
@@ -57,8 +61,8 @@ struct xg_lr0state
   /* LR(0) items.  */
   ulib_vector items;
 
-  /* Outgoing edges.  */
-  ulib_vector edges;
+  /* Parse actions.  */
+  ulib_vector axns;
 };
 typedef struct xg_lr0state xg_lr0state;
 
@@ -85,15 +89,15 @@ xg_lr0item *xg_lr0state_items_front (const xg_lr0state *state);
    possibly invalidated after adding an item to the set.  */
 xg_lr0item *xg_lr0state_items_back (const xg_lr0state *state);
 
-/* Add an edge to an LR(0) state.  */
-int xg_lr0state_add_edge (xg_lr0state *state, xg_sym label, unsigned int dst);
+/* Add a parse action to an LR(0) state.  */
+int xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,
+                         unsigned int no);
 
-/* Get edge count.  */
-unsigned int xg_lr0state_edge_count (const xg_lr0state *state);
+/* Get parse actions count.  */
+unsigned int xg_lr0state_axn_count (const xg_lr0state *state);
 
-/* Get an outgoing edge.  */
-const xg_lr0edge *xg_lr0state_get_edge (const xg_lr0state *state,
-                                        unsigned int n);
+/* Get a parse action.  */
+const xg_lr0axn *xg_lr0state_get_axn (const xg_lr0state *state, unsigned int n);
 
 /* Compute the closure of an LR(0) state.  */
 int xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state);
