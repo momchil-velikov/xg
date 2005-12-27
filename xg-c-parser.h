@@ -24,9 +24,6 @@ typedef struct xg_stkent xg_stkent;
 /* Parser stack.  */
 struct xg_stack
 {
-  /* Stack depth. */
-  unsigned int size;
-
   /* Allocated size.  */
   unsigned int alloc;
 

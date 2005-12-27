@@ -368,7 +368,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
       it = xg_lr0state_get_item (state, i);
       p = xg_grammar_get_prod (g, it->prod);
 
-      fprintf (out, "\t%u: ", it->prod);
+      fprintf (out, "\t%-4u: ", it->prod);
       xg_symbol_name_debug (out, g, p->lhs);
       fputs (" ->", out);
 
@@ -389,7 +389,6 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
 
       fputc ('\n', out);
     }
-
 
   /* Dump actions.  */
   fputc ('\n', out);
