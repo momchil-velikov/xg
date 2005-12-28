@@ -104,6 +104,7 @@ main (int argc, char *argv [])
   if (1)
     {
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
+      xg_lr0dfa_make_slr_reductions (g, dfa);
       xg_lr0dfa_debug (stderr, g, dfa);
       xg_gen_c_slr (stdout, g, dfa);
       xg_lr0dfa_del (dfa);

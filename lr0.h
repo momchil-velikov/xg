@@ -46,7 +46,7 @@ struct xg_lr0axn
   /* Lookahead.  */
   xg_sym sym;
 
-  /* Shift or reduce (non-terminal transitions are encodef as
+  /* Shift or reduce (non-terminal transitions are encoded as
      shifts).  */
   unsigned int shift;
 
@@ -130,6 +130,10 @@ unsigned int xg_lr0dfa_state_count (const xg_lr0dfa *dfa);
 
 /* Get the N-th  LR(0) DFA state.  */
 xg_lr0state *xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n);
+
+
+/* Create reductions for an SLR(1) parser.  */
+int xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Display a debugging dump of an LR(0) DFA.  */
 void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);

@@ -437,12 +437,11 @@ static int
 lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
 {
   int no;
-  unsigned int i, j, n;
+  unsigned int i;
   xg_lr0state *src, *dst;
   const xg_lr0item *it, *end;
   const xg_prod *p;
   xg_sym sym;
-  xg_symdef *def;
   ulib_bitset trans_done, closure_done;
 
   /* Start at the closure of the LR(0) item <0, 0>.  */
@@ -481,19 +480,6 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                       || (dst = xg_lr0state_goto (g, src, sym)) == 0
                       || (no = lr0dfa_add_state (dfa, dst)) < 0
                       || xg_lr0state_add_axn (src, sym, 1, no) < 0)
-                    goto error;
-                }
-            }
-          else
-            {
-              /* Reduce actions.  */
-              def = xg_grammar_get_symbol (g, p->lhs);
-
-              n = ulib_bitset_max (&def->follow);
-              for (j = 0; j < n; ++j)
-                {
-                  if (ulib_bitset_is_set (&def->follow, j)
-                      && xg_lr0state_add_axn (src, j, 0, it->prod) < 0)
                     goto error;
                 }
             }
@@ -579,6 +565,48 @@ xg_lr0state *
 xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n)
 {
   return ulib_vector_ptr_elt (&dfa->states, n);
+}
+
+/* Create reductions for an SLR(1) parser.  */
+int
+xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
+{
+  unsigned int i, j, n, m;
+  xg_lr0state *state;
+  const xg_lr0item *it, *end;
+  const xg_prod *p;
+  const xg_symdef *def;
+
+  n = xg_lr0dfa_state_count (dfa);
+
+  for (i = 0; i < n; ++i)
+    {
+      state = ulib_vector_ptr_elt (&dfa->states, i);
+
+      /* Walk over the final items and create each possible SLR(1)
+         reduction.  */
+      it = xg_lr0state_items_front (state);
+      end = xg_lr0state_items_back (state);
+      while (it < end)
+        {
+          p = xg_grammar_get_prod (g, it->prod);
+          if (it->dot == xg_prod_length (p))
+            {
+              def = xg_grammar_get_symbol (g, p->lhs);
+
+              m = ulib_bitset_max (&def->follow);
+              for (j = 0; j < m; ++j)
+                {
+                  if (ulib_bitset_is_set (&def->follow, j)
+                      && xg_lr0state_add_axn (state, j, 0, it->prod) < 0)
+                    return -1;
+                }
+            }
+          ++it;
+        }
+    }
+
+  return 0;
 }
 
 
