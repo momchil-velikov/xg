@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include "grammar.h"
 #include "lr0.h"
-#include "gen-c-slr.h"
+#include "gen-parser.h"
 #include "xg.h"
 #include <ulib/cache.h>
 
@@ -106,7 +106,7 @@ main (int argc, char *argv [])
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
       xg_lr0dfa_make_slr_reductions (g, dfa);
       xg_lr0dfa_debug (stderr, g, dfa);
-      xg_gen_c_slr (stdout, g, dfa);
+      xg_gen_c_parser (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
     }
 

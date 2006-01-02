@@ -1,4 +1,4 @@
-/* gen-c-slr.h - C SLR(1) declarations.  
+/* gen-parser.h - parser generator declarations.  
  *
  * Copyright (C) 2005 Momchil Velikov
  *
@@ -26,8 +26,8 @@
 
 BEGIN_DECLS
 
-/* Generate an SLR(1) parser in ISO C.  */
-int xg_gen_c_slr (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
+/* Generate a SLR(1) or LALR(1) parser in ISO C.  */
+int xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
 
 END_DECLS
 #endif /* xg_gen_c_slr_h */

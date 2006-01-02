@@ -1,4 +1,4 @@
-/* gen-c-slr.c - generate an SLR(1) parser in ISO C
+/* gen-c-parser.c - generate a parser in ISO C
  *
  * Copyright (C) 2005 Momchil Velikov
  *
@@ -24,7 +24,7 @@
 #include <stdio.h>
 
 int
-xg_gen_c_slr (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
+xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 {
   int have_case;
   xg_sym last_sym;
@@ -37,28 +37,31 @@ xg_gen_c_slr (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   /* Include the common parser declarations.  */
   fputs ("#include <xg-c-parser.h>\n\n", out);
 
-  /* Emit parser function definition: prototype.  */
+  /* Emit parser function preambule.  */
   fputs ("int\n"
-         "xg_parse ()\n"
+         "xg_parse (xg_parse_ctx *ctx)\n"
          "{\n"
          "  int token;\n"
          "  void *value;\n"
          "\n"
          "  unsigned int lhs;\n"
+
          "\n"
-         "  xg_stack stk;\n"
+         "#define SHIFT \\\n"
+         "  do \\\n"
+         "    { \\\n"
+         "      xg__stack_top (&ctx->stk)->value = value;   \\\n"
+         "      if ((token = ctx->get_token (&value)) == -1) \\\n"
+         "        goto lexer_error; \\\n"
+         "    } \\\n"
+         "  while (0)"
          "\n"
-         "#define SHIFT                           \\\n"
-         "  xg_stack_top (&stk)->value = value;   \\\n"
-         "  if ((token = xg_get_token (&value)) == -1) \\\n"
-         "    goto lexer_error;"
+         "#define PUSH(n) xg__stack_push (&ctx->stk, n)\n"
          "\n"
-         "#define PUSH(n) xg_stack_push (&stk, n)\n"
-         "\n"
-         "  if (xg_stack_init (&stk) < 0)\n"
+         "  if (xg__stack_init (&ctx->stk) < 0)\n"
          "    return -1;\n"
          "\n"
-         "  if ((token = xg_get_token (&value)) == -1)\n"
+         "  if ((token = ctx->get_token (&value)) == -1)\n"
          "    goto lexer_error;\n"
          "  goto push_0;\n"
          "\n", out);
@@ -92,17 +95,19 @@ xg_gen_c_slr (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       fputs ("  goto parse_error;\n\n\n", out);
     }
 
-  /* Emit reduction code for each production.  */
+  /* Reduce by production 0 is the accepting state.  */
   fputs ("reduce_0:\n"
          "  goto accept;\n\n",
          out);
+
+  /* Emit reduce actions for each production.  */
   n = xg_grammar_prod_count (g);
   for (i = 1; i < n; ++i)
     {
       p = xg_grammar_get_prod (g, i);
       fprintf (out,
                "reduce_%u:\n"
-               "  xg_stack_pop (&stk, %u);\n"
+               "  xg__stack_pop (&ctx->stk, %u);\n"
                "  lhs = %u;\n"
                "  goto next;\n\n",
                i, xg_prod_length (p), p->lhs);
@@ -110,7 +115,7 @@ xg_gen_c_slr (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 
   /* Emit non-terminal transitions for each state.  */
   fputs ("next:\n"
-         "  switch (xg_stack_top (&stk)->state)\n"
+         "  switch (xg__stack_top (&ctx->stk)->state)\n"
          "    {\n",
          out);
   n = xg_lr0dfa_state_count (dfa);

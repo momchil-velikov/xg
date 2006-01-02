@@ -11,7 +11,7 @@
 #include <assert.h>
 
 /* Parser stack entry.  */
-struct xg_stkent
+struct xg__stkent
 {
   /* DFA state.  */
   unsigned int state;
@@ -19,28 +19,28 @@ struct xg_stkent
   /* Semantic value.  */
   void *value;
 };
-typedef struct xg_stkent xg_stkent;
+typedef struct xg__stkent xg__stkent;
 
 /* Parser stack.  */
-struct xg_stack
+struct xg__stack
 {
   /* Allocated size.  */
   unsigned int alloc;
 
   /* Stack entries.  */
-  xg_stkent *base;
+  xg__stkent *base;
 
   /* Top entry.  */
-  xg_stkent *top;
+  xg__stkent *top;
 };
-typedef struct xg_stack xg_stack;
+typedef struct xg__stack xg__stack;
 
 /* Initialize the parser stack.  */
 static inline int
-xg_stack_init (xg_stack *stk)
+xg__stack_init (xg__stack *stk)
 {
   stk->alloc = 10;
-  stk->base = malloc (stk->alloc * sizeof (xg_stkent));
+  stk->base = malloc (stk->alloc * sizeof (xg__stkent));
   if (stk->base == 0)
     return -1;
   stk->top = stk->base;
@@ -49,12 +49,12 @@ xg_stack_init (xg_stack *stk)
 
 /* Push a state on the stack.  */
 static inline int
-xg_stack_push (xg_stack *stk, unsigned int state)
+xg__stack_push (xg__stack *stk, unsigned int state)
 {
   if (stk->top - stk->base == stk->alloc)
     {
       unsigned int nsz = stk->alloc * 2 + 1;
-      xg_stkent *nw = realloc (stk->base, stk->alloc * sizeof (xg_stkent));
+      xg__stkent *nw = realloc (stk->base, stk->alloc * sizeof (xg__stkent));
       if (nw == 0)
         return -1;
       stk->top = nw + (stk->top - stk->base);
@@ -71,22 +71,30 @@ xg_stack_push (xg_stack *stk, unsigned int state)
 
 /* Pop N entries from the stack.  */
 static inline void
-xg_stack_pop (xg_stack *stk, unsigned int n)
+xg__stack_pop (xg__stack *stk, unsigned int n)
 {
   assert (n < stk->top - stk->base);
   stk->top -= n;
 }
 
 /* Return top of the stack.  */
-static inline xg_stkent *
-xg_stack_top (xg_stack *stk)
+static inline xg__stkent *
+xg__stack_top (xg__stack *stk)
 {
   return stk->top - 1;
 }
 
 
-/* Scanner function: must be supplied by user.  */
-int xg_get_token (void **value);
+/* Parser context struct.  */
+struct xg_parse_ctx
+{
+  /* Scanner function (initialized by user).  */
+  int (*get_token) (void **value);
+
+  /* Parser automaton stack (initialized by the parser function). */
+  xg__stack stk;
+};
+typedef struct xg_parse_ctx xg_parse_ctx;
 
 #endif /* xg__c_parser_h 1 */
 
