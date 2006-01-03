@@ -40,6 +40,17 @@ struct xg_lr0item
 };
 typedef struct xg_lr0item xg_lr0item;
 
+/* A transition in the LR(0) DFA.  */
+struct xg_lr0trans
+ {
+   /* Transition label.  */
+   xg_sym sym;
+ 
+   /* Destination state. */
+   unsigned int state;
+ };
+typedef struct xg_lr0trans xg_lr0trans;
+
 /* A parse action in an LR(0) DFA state.  */
 struct xg_lr0axn
 {
@@ -60,6 +71,9 @@ struct xg_lr0state
 {
   /* LR(0) items.  */
   ulib_vector items;
+
+  /* Transitions.  */
+  ulib_vector trans;
 
   /* Parse actions.  */
   ulib_vector axns;
@@ -88,6 +102,15 @@ xg_lr0item *xg_lr0state_items_front (const xg_lr0state *state);
 /* Return a pointer just after last LR(0) item.  The pointer is
    possibly invalidated after adding an item to the set.  */
 xg_lr0item *xg_lr0state_items_back (const xg_lr0state *state);
+
+/* Add a transition to an LR(0) state.  */
+int xg_lr0state_add_trans (xg_lr0state *state, xg_sym label, unsigned int dst);
+
+/* Get the number of transitions.  */
+unsigned int xg_lr0state_trans_count (const xg_lr0state *state);
+
+/* Get the Nth transition.  */
+xg_lr0trans *xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n);
 
 /* Add a parse action to an LR(0) state.  */
 int xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,

@@ -36,9 +36,15 @@ lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
   if (ulib_vector_init (&state->items,
                         ULIB_ELT_SIZE, sizeof (xg_lr0item), 0) == 0)
     {
-      if (ulib_vector_init (&state->axns,
-                            ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0) == 0)
-        return 0;
+      if (ulib_vector_init (&state->trans,
+                            ULIB_ELT_SIZE, sizeof (xg_lr0trans), 0) == 0)
+        {
+          if (ulib_vector_init (&state->axns,
+                                ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0) == 0)
+            return 0;
+
+          ulib_vector_destroy (&state->trans);
+        }
       ulib_vector_destroy (&state->items);
     }
 
@@ -50,6 +56,7 @@ static void
 lr0state_clear (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_set_size (&state->items, 0);
+  ulib_vector_set_size (&state->trans, 0);
   ulib_vector_set_size (&state->axns, 0);
 }
 
@@ -58,6 +65,7 @@ static void
 lr0state_dtor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_destroy (&state->items);
+  ulib_vector_destroy (&state->trans);
   ulib_vector_destroy (&state->axns);
 }
 
@@ -135,6 +143,42 @@ xg_lr0state_items_back (const xg_lr0state *state)
 {
   return ulib_vector_back (&state->items);
 }
+
+
+/* Add a transition to an LR(0) state.  */
+int
+xg_lr0state_add_trans (xg_lr0state *state, xg_sym label, unsigned int dst)
+{
+  xg_lr0trans *t;
+
+  if (ulib_vector_resize (&state->trans, 1) == 0)
+    {
+      t = ulib_vector_back (&state->trans);
+
+      t [-1].sym = label;
+      t [-1].state = dst;
+
+      return 0;
+    }
+
+  ulib_log_printf (xg_log, "ERROR: Unable to append an LR(0) DFA transition");
+  return -1;
+}
+
+/* Get the number of transitions.  */
+ unsigned int
+xg_lr0state_trans_count (const xg_lr0state *state)
+{
+  return ulib_vector_length (&state->trans);
+}
+
+/* Get the Nth transition.  */
+xg_lr0trans *
+xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n)
+{
+  return ulib_vector_elt (&state->trans, n);
+}
+
 
 /* Add a parse action to an LR(0) state.  */
 int
@@ -462,8 +506,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
     {
       src = ulib_vector_ptr_elt (&dfa->states, i);
 
-      /* Walk over the items and compute each possible parser
-         action.  */
+      /* Walk over the items and compute each possible transition.  */
       it = xg_lr0state_items_front (src);
       end = xg_lr0state_items_back (src);
       while (it < end)
@@ -471,7 +514,6 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
           p = xg_grammar_get_prod (g, it->prod);
           if (it->dot < xg_prod_length (p))
             {
-              /* Shift actions.  */
               sym = xg_prod_get_symbol (p, it->dot);
               if (ulib_bitset_is_set (&trans_done, sym) == 0)
                 {
@@ -479,6 +521,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                   if (ulib_bitset_set (&trans_done, sym) < 0
                       || (dst = xg_lr0state_goto (g, src, sym)) == 0
                       || (no = lr0dfa_add_state (dfa, dst)) < 0
+                      || xg_lr0state_add_trans (src, sym, no) < 0
                       || xg_lr0state_add_axn (src, sym, 1, no) < 0)
                     goto error;
                 }
