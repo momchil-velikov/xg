@@ -155,8 +155,8 @@ unsigned int xg_lr0dfa_state_count (const xg_lr0dfa *dfa);
 xg_lr0state *xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n);
 
 
-/* Create reductions for an SLR(1) parser.  */
-int xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
+/* Create actions for an SLR(1) parser.  */
+int xg_lr0dfa_make_slr_actions (const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Display a debugging dump of an LR(0) DFA.  */
 void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);

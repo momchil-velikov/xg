@@ -521,8 +521,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                   if (ulib_bitset_set (&trans_done, sym) < 0
                       || (dst = xg_lr0state_goto (g, src, sym)) == 0
                       || (no = lr0dfa_add_state (dfa, dst)) < 0
-                      || xg_lr0state_add_trans (src, sym, no) < 0
-                      || xg_lr0state_add_axn (src, sym, 1, no) < 0)
+                      || xg_lr0state_add_trans (src, sym, no) < 0)
                     goto error;
                 }
             }
@@ -610,9 +609,28 @@ xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n)
   return ulib_vector_ptr_elt (&dfa->states, n);
 }
 
-/* Create reductions for an SLR(1) parser.  */
+/* Create shift actions for all LR parsers.  */
+static int
+create_shift_actions (xg_lr0state *state)
+{
+  unsigned int i, n;
+  const xg_lr0trans *t;
+
+  n = xg_lr0state_trans_count (state);
+  for (i = 0; i < n; ++i)
+    {
+      t = xg_lr0state_get_trans (state, i);
+
+      if (xg_lr0state_add_axn (state, t->sym, 1, t->state) < 0)
+        return -1;
+    }
+
+  return 0;
+}
+
+/* Create actions for an SLR(1) parser.  */
 int
-xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
+xg_lr0dfa_make_slr_actions (const xg_grammar *g, xg_lr0dfa *dfa)
 {
   unsigned int i, j, n, m;
   xg_lr0state *state;
@@ -625,6 +643,10 @@ xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
   for (i = 0; i < n; ++i)
     {
       state = ulib_vector_ptr_elt (&dfa->states, i);
+
+      /* Create shift actions.  */
+      if (create_shift_actions (state) < 0)
+        return -1;
 
       /* Walk over the final items and create each possible SLR(1)
          reduction.  */
