@@ -189,6 +189,37 @@ error:
   return -1;
 }
 
+
+/* Check whether the symbol S is nullable.  */
+int
+xg_nullable_sym (const xg_grammar *g, xg_sym s)
+{
+  xg_symdef *def;
+
+  if (s == XG_EPSILON)
+    return 1;
+
+  if (xg_grammar_is_terminal_sym (g, s))
+    return 0;
+
+  def = xg_grammar_get_symbol (g, s);
+  return ulib_bitset_is_set (&def->first, XG_EPSILON);
+}
+
+/* Check whether the sentenial form FORM can derive the empty string.
+   The FIRST set is a prerequisite for calling this function.  */
+int
+xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form)
+{
+  while (n--)
+    {
+      if (! xg_nullable_sym (g, *form))
+        return 1;
+      ++form;
+    }
+  return 0;
+}
+
 /*
  * Local variables:
  * mode: C

@@ -163,6 +163,14 @@ int xg_grammar_compute_first (const xg_grammar *g);
 int xg_grammar_compute_follow (const xg_grammar *g);
 
 
+/* Check whether the symbol S is nullable.  */
+int xg_nullable_sym (const xg_grammar *g, xg_sym s);
+
+/* Check whether the sentenial form FORM can derive the empty string.
+   The FIRST set is a prerequisite for calling this function.  */
+int xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form);
+
+
 /* Display a symbol name.  */
 void xg_symbol_name_debug (FILE *out, const xg_grammar *g, xg_sym sym);
 
