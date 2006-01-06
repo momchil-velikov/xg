@@ -1,6 +1,6 @@
 /* gen-c-parser.c - generate a parser in ISO C
  *
- * Copyright (C) 2005 Momchil Velikov
+ * Copyright (C) 2005, 2006 Momchil Velikov
  *
  * This file is part of XG.
  *

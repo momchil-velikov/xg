@@ -1,6 +1,6 @@
 /* lr0.c - LR(0) DFA operation
  *
- * Copyright (C) 2005 Momchil Velikov
+ * Copyright (C) 2005, 2006 Momchil Velikov
  *
  * This file is part of XG.
  *
