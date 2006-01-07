@@ -49,8 +49,11 @@ struct xg_lr0trans
   /* Transition label.  */
   xg_sym sym;
 
+  /* Source stage.  */
+  unsigned int src;
+
   /* Destination state. */
-  unsigned int state;
+  unsigned int dst;
 };
 typedef struct xg_lr0trans xg_lr0trans;
 
@@ -72,6 +75,9 @@ typedef struct xg_lr0axn xg_lr0axn;
 /* A state in the LR(0) DFA for viable prefixes.  */
 struct xg_lr0state
 {
+  /* State id.  */
+  unsigned int id;
+
   /* LR(0) items.  */
   ulib_vector items;
 
@@ -165,8 +171,10 @@ unsigned int xg_lr0dfa_state_count (const xg_lr0dfa *dfa);
 /* Get the N-th  LR(0) DFA state.  */
 xg_lr0state *xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n);
 
-/* Add a transition to DST on symbol SYM to the LR (0) DFA.  */
-int xg_lr0dfa_add_trans (xg_lr0dfa *dfa, xg_sym sym, unsigned int dst);
+/* Add a transition from SRC to DST on symbol SYM to the LR (0)
+   DFA.  */
+int xg_lr0dfa_add_trans (xg_lr0dfa *dfa, xg_sym sym, unsigned int src,
+                         unsigned int dst);
 
 /* Get the number of LR(0) DFA transitions.  */
 unsigned int xg_lr0dfa_trans_count (const xg_lr0dfa *dfa);
