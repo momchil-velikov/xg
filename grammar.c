@@ -1,6 +1,6 @@
 /* grammar.c - grammar structures utility functions
  *
- * Copyright (C) 2005 Momchil Velikov
+ * Copyright (C) 2005, 2006 Momchil Velikov
  *
  * This file is part of XG.
  *
@@ -30,18 +30,10 @@ static ulib_cache *symdef_cache;
 static int
 symdef_ctor (xg_symdef *def, unsigned int sz __attribute__ ((unused)))
 {
-  if (ulib_bitset_init (&def->first) == 0)
-    {
-      if (ulib_bitset_init (&def->follow) == 0)
-        {
-          if (ulib_vector_init (&def->prods, ULIB_ELT_SIZE,
-                                sizeof (unsigned int), 0) == 0)
-            return 0;
-          ulib_bitset_destroy (&def->follow);
-        }
-      ulib_bitset_destroy (&def->first);
-    }
-  return -1;
+  (void) ulib_bitset_init (&def->first);
+  (void) ulib_bitset_init (&def->follow);
+  (void) ulib_vector_init (&def->prods, ULIB_ELT_SIZE, sizeof (unsigned), 0);
+  return 0;
 }
 
 /* Symbol definition destruction.  */
@@ -117,12 +109,8 @@ xg_prod_new (xg_sym lhs)
   if (prod != 0)
     {
       prod->lhs = lhs;
-      if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym),
-                            ULIB_GROWTH_SCALE, 2, 0) == 0)
-        return prod;
-
-      ulib_log_printf (xg_log, "ERROR: Unable to create production rhs");
-      return 0;
+      (void) ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym), 0);
+      return prod;
     }
 
   ulib_log_printf (xg_log, "ERROR: Unable to allocate a production");
@@ -133,12 +121,8 @@ xg_prod_new (xg_sym lhs)
 static int
 prod_ctor (xg_prod *prod, unsigned int sz __attribute__ ((unused)))
 {
-  if (ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym),
-                        ULIB_GROWTH_SCALE, 2, 0) == 0)
-    return 0;
-
-  ulib_log_printf (xg_log, "ERROR: Unable to create production rhs");
-  return -1;
+  (void) ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym), 0);
+  return 0;
 }
 
 /* Production destruction.  */
@@ -219,20 +203,17 @@ xg_grammar_new ()
   if ((g = xg_malloc (sizeof (xg_grammar))) != 0)
     {
       g->start = 0;
-      if (ulib_vector_init (&g->syms, ULIB_DATA_PTR_VECTOR, 0) == 0)
+      (void) ulib_vector_init (&g->syms, ULIB_DATA_PTR_VECTOR, 0);
+      if (ulib_vector_resize (&g->syms, XG_TOKEN_LITERAL_MAX + 1) == 0)
         {
-          if (ulib_vector_resize (&g->syms, XG_TOKEN_LITERAL_MAX + 1) == 0)
-            {
-              if (ulib_vector_init (&g->prods, ULIB_DATA_PTR_VECTOR, 0) == 0)
-                {
-                  if (ulib_gcroot (g, (ulib_gcscan_func) grammar_gcscan) == 0)
-                    return g;
+          (void) ulib_vector_init (&g->prods, ULIB_DATA_PTR_VECTOR, 0);
 
-                  ulib_vector_destroy (&g->prods);
-                }
-            }
-          ulib_vector_destroy (&g->syms);
+          if (ulib_gcroot (g, (ulib_gcscan_func) grammar_gcscan) == 0)
+            return g;
+
+          ulib_vector_destroy (&g->prods);
         }
+      ulib_vector_destroy (&g->syms);
       xg_free (g);
     }
 
@@ -344,27 +325,23 @@ init_bitsets (void)
 
   if ((eps_set = malloc (sizeof (ulib_bitset))) != 0)
     {
-      if (ulib_bitset_init (eps_set) == 0)
+      (void) ulib_bitset_init (eps_set);
+      if (ulib_bitset_set (eps_set, XG_EPSILON) == 0)
         {
-          if (ulib_bitset_set (eps_set, XG_EPSILON) == 0)
+          if ((eof_set = malloc (sizeof (ulib_bitset))) != 0)
             {
-              if ((eof_set = malloc (sizeof (ulib_bitset))) != 0)
+              (void) ulib_bitset_init (eof_set);
+              if (ulib_bitset_set (eof_set, XG_EOF) == 0)
                 {
-                  if (ulib_bitset_init (eof_set) == 0)
-                    {
-                      if (ulib_bitset_set (eof_set, XG_EOF) == 0)
-                        {
-                          xg_epsilon_set = eps_set;
-                          xg_eof_set = eof_set;
-                          return 0;
-                        }
-                      ulib_bitset_destroy (eof_set);
-                    }
-                  free (eof_set);
+                  xg_epsilon_set = eps_set;
+                  xg_eof_set = eof_set;
+                  return 0;
                 }
+              ulib_bitset_destroy (eof_set);
+              free (eof_set);
             }
-          ulib_bitset_destroy (eps_set);
         }
+      ulib_bitset_destroy (eps_set);
       free (eps_set);
     }
 

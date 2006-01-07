@@ -33,22 +33,11 @@ static ulib_cache *lr0state_cache;
 static int
 lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
-  if (ulib_vector_init (&state->items,
-                        ULIB_ELT_SIZE, sizeof (xg_lr0item), 0) == 0)
-    {
-      if (ulib_vector_init (&state->tr,
-                            ULIB_ELT_SIZE, sizeof (unsigned int), 0) == 0)
-        {
-          if (ulib_vector_init (&state->axns,
-                                ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0) == 0)
-            return 0;
-
-          ulib_vector_destroy (&state->tr);
-        }
-      ulib_vector_destroy (&state->items);
-    }
-
-  return -1;
+  (void) ulib_vector_init (&state->items,
+                           ULIB_ELT_SIZE, sizeof (xg_lr0item), 0);
+  (void) ulib_vector_init (&state->tr, ULIB_ELT_SIZE, sizeof (unsigned int), 0);
+  (void) ulib_vector_init (&state->axns, ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0);
+  return 0;
 }
 
 /* LR(0) state clear.  */
@@ -155,7 +144,7 @@ xg_lr0state_add_trans (xg_lr0state *state, unsigned int no)
                        "ERROR: Unable to append an LR(0) DFA transition");
       return -1;
     }
-  
+
   return 0;
 }
 
@@ -317,16 +306,8 @@ xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state)
   int sts;
   ulib_bitset done;
 
-  /* Create a set to record already expanded non-terminal symbols.  */
-  if (ulib_bitset_init (&done) < 0)
-    {
-      ulib_log_printf (xg_log,
-                       "ERROR: Unable to create expansion track bitset.");
-      return -1;
-    }
-
+  (void) ulib_bitset_init (&done);
   sts = lr0state_closure (g, state, &done);
-
   ulib_bitset_destroy (&done);
 
   return sts;
@@ -450,7 +431,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
 static int
 lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
 {
-  int no;
+  int no, sts = -1;
   unsigned int i;
   xg_lr0state *src, *dst;
   const xg_lr0item *it, *end;
@@ -466,10 +447,8 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
     return -1;
 
   /* Initialize done sets.  */
-  if (ulib_bitset_init (&trans_done) < 0)
-    return -1;
-  if (ulib_bitset_init (&closure_done) < 0)
-    goto error0;
+  (void) ulib_bitset_init (&trans_done);
+  (void) ulib_bitset_init (&closure_done);
 
   /* Walk over unprocessed states.  */
   for (i = 0; i < ulib_vector_length (&dfa->states); ++i)
@@ -493,7 +472,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                       || (no = xg_lr0dfa_add_state (dfa, dst)) < 0
                       || (no = xg_lr0dfa_add_trans (dfa, sym, src->id, no)) < 0
                       || xg_lr0state_add_trans (src, no) < 0)
-                    goto error;
+                    goto exit;
                 }
             }
           ++it;
@@ -501,15 +480,12 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
       ulib_bitset_clear_all (&trans_done);
     }
 
-  ulib_bitset_destroy (&closure_done);
-  ulib_bitset_destroy (&trans_done);
-  return 0;
+  sts = 0;
 
-error:
+exit:
   ulib_bitset_destroy (&closure_done);
-error0:
   ulib_bitset_destroy (&trans_done);
-  return -1;
+  return sts;
 }
 
 /* LR(0) DFA pointer scan function.  */
@@ -538,22 +514,16 @@ xg_lr0dfa_new (const xg_grammar *g)
 
   if ((dfa = malloc (sizeof (xg_lr0dfa))) != 0)
     {
-      if (ulib_vector_init (&dfa->states, ULIB_DATA_PTR_VECTOR, 0) == 0)
+      (void) ulib_vector_init (&dfa->states, ULIB_DATA_PTR_VECTOR, 0);
+      (void) ulib_vector_init (&dfa->trans,
+                               ULIB_ELT_SIZE, sizeof (xg_lr0trans), 0);
+      if (lr0dfa_create (g, dfa) == 0)
         {
-          if (ulib_vector_init (&dfa->trans,
-                                ULIB_ELT_SIZE, sizeof (xg_lr0trans), 0) == 0)
-            {
-              if (lr0dfa_create (g, dfa) == 0)
-                {
-                  if (ulib_gcroot (dfa, (ulib_gcscan_func) lr0dfa_gcscan) == 0)
-                    return dfa;
-                }
-              ulib_vector_destroy (&dfa->trans);
-            }
-
-          ulib_vector_destroy (&dfa->states);
+          if (ulib_gcroot (dfa, (ulib_gcscan_func) lr0dfa_gcscan) == 0)
+            return dfa;
         }
-
+      ulib_vector_destroy (&dfa->trans);
+      ulib_vector_destroy (&dfa->states);
       free (dfa);
     }
 
