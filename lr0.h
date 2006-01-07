@@ -42,13 +42,16 @@ typedef struct xg_lr0item xg_lr0item;
 
 /* A transition in the LR(0) DFA.  */
 struct xg_lr0trans
- {
-   /* Transition label.  */
-   xg_sym sym;
- 
-   /* Destination state. */
-   unsigned int state;
- };
+{
+  /* Transition id.  */
+  unsigned int id;
+
+  /* Transition label.  */
+  xg_sym sym;
+
+  /* Destination state. */
+  unsigned int state;
+};
 typedef struct xg_lr0trans xg_lr0trans;
 
 /* A parse action in an LR(0) DFA state.  */
@@ -73,7 +76,7 @@ struct xg_lr0state
   ulib_vector items;
 
   /* Transitions.  */
-  ulib_vector trans;
+  ulib_vector tr;
 
   /* Parse actions.  */
   ulib_vector axns;
@@ -104,13 +107,13 @@ xg_lr0item *xg_lr0state_items_front (const xg_lr0state *state);
 xg_lr0item *xg_lr0state_items_back (const xg_lr0state *state);
 
 /* Add a transition to an LR(0) state.  */
-int xg_lr0state_add_trans (xg_lr0state *state, xg_sym label, unsigned int dst);
+int xg_lr0state_add_trans (xg_lr0state *state, unsigned int id);
 
 /* Get the number of transitions.  */
 unsigned int xg_lr0state_trans_count (const xg_lr0state *state);
 
-/* Get the Nth transition.  */
-xg_lr0trans *xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n);
+/* Get the Nth transition ID.  */
+unsigned int xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n);
 
 /* Add a parse action to an LR(0) state.  */
 int xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,
@@ -139,6 +142,9 @@ struct xg_lr0dfa
 {
   /* Automaton states (pointers).  */
   ulib_vector states;
+
+  /* Automaton transitions.  */
+  ulib_vector trans;
 };
 typedef struct xg_lr0dfa xg_lr0dfa;
 
@@ -148,11 +154,25 @@ xg_lr0dfa *xg_lr0dfa_new (const xg_grammar *g);
 /* Delete an LR(0) DFA.  */
 void xg_lr0dfa_del (xg_lr0dfa *dfa);
 
+/* Add a state to an LR(0) DFA.  Return an index of an LR(0) DFA
+   state, which may not refer to S, if a state, which compares equal
+   to S, already exists.  Return negative on error.  */
+int xg_lr0dfa_add_state (xg_lr0dfa *dfa, xg_lr0state *s);
+
 /* Get the number of LR(0) DFA states.  */
 unsigned int xg_lr0dfa_state_count (const xg_lr0dfa *dfa);
 
 /* Get the N-th  LR(0) DFA state.  */
 xg_lr0state *xg_lr0dfa_get_state (const xg_lr0dfa *dfa, unsigned int n);
+
+/* Add a transition to DST on symbol SYM to the LR (0) DFA.  */
+int xg_lr0dfa_add_trans (xg_lr0dfa *dfa, xg_sym sym, unsigned int dst);
+
+/* Get the number of LR(0) DFA transitions.  */
+unsigned int xg_lr0dfa_trans_count (const xg_lr0dfa *dfa);
+
+/* Get the N-th  LR(0) DFA transition.  */
+xg_lr0trans *xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n);
 
 
 /* Create actions for an SLR(1) parser.  */
