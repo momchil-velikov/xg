@@ -443,7 +443,7 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
   if ((src = xg_lr0state_new ()) == 0
       || xg_lr0state_add_item (src, 0, 0) < 0
       || xg_lr0state_closure (g, src) < 0
-      || ulib_vector_append_ptr (&dfa->states, src) < 0)
+      || xg_lr0dfa_add_state (dfa, src) < 0)
     return -1;
 
   /* Initialize done sets.  */
