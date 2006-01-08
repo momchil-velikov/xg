@@ -36,7 +36,8 @@ lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
   (void) ulib_vector_init (&state->items,
                            ULIB_ELT_SIZE, sizeof (xg_lr0item), 0);
   (void) ulib_vector_init (&state->tr, ULIB_ELT_SIZE, sizeof (unsigned int), 0);
-  (void) ulib_vector_init (&state->axns, ULIB_ELT_SIZE, sizeof (xg_lr0axn), 0);
+  (void) ulib_vector_init (&state->rd,
+                           ULIB_ELT_SIZE, sizeof (xg_lr0reduct), 0);
   return 0;
 }
 
@@ -44,9 +45,20 @@ lr0state_ctor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 static void
 lr0state_clear (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
+  unsigned int n;
+  xg_lr0reduct *rd;
+
   ulib_vector_set_size (&state->items, 0);
   ulib_vector_set_size (&state->tr, 0);
-  ulib_vector_set_size (&state->axns, 0);
+
+  n = ulib_vector_length (&state->rd);
+  rd = ulib_vector_front (&state->rd);
+  while (n--)
+    {
+      ulib_bitset_destroy (&rd->la);
+      ++rd;
+    }
+  ulib_vector_set_size (&state->rd, 0);
 }
 
 /* LR(0) state destructor.  */
@@ -55,7 +67,7 @@ lr0state_dtor (xg_lr0state *state, unsigned int size __attribute__ ((unused)))
 {
   ulib_vector_destroy (&state->items);
   ulib_vector_destroy (&state->tr);
-  ulib_vector_destroy (&state->axns);
+  ulib_vector_destroy (&state->rd);
 }
 
 
@@ -163,59 +175,53 @@ xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n)
 }
 
 
-/* Add a parse action to an LR(0) state.  */
-int
-xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,
-                     unsigned int no)
+/* Add a reduction to an LR(0) state.  If a reduction on PROD already
+   exists, return a pointer to the existing reduction, otherwise
+   create a new one.  Return null on error.  */
+xg_lr0reduct *
+xg_lr0state_add_reduct (xg_lr0state *state, unsigned int prod)
 {
-  xg_lr0axn *begin, *axn, *end;
+  unsigned int n;
+  xg_lr0reduct *rd;
 
-  /* Find whether there are already other actions on SYM.  */
-  begin = ulib_vector_front (&state->axns);
-  end = ulib_vector_back (&state->axns);
-  for (axn = begin; axn < end; ++axn)
+  n = ulib_vector_length (&state->rd);
+  rd = ulib_vector_front (&state->rd);
+  while (n--)
     {
-      if (axn->sym == sym)
-        {
-          /* Lookahead symbol found, insert the action so actions on
-             the same lookaheads are adjiacent.  */
-          xg_lr0axn act = { sym, shift, no };
-          if (ulib_vector_insert (&state->axns, axn - begin, &act) < 0)
-            goto error;
-          return 0;
-        }
+      if (rd->prod == prod)
+        return rd;
+      ++rd;
     }
 
-  /* First action on this lookahead.  */
-  if (ulib_vector_resize (&state->axns, 1) < 0)
-    goto error;
+  if (ulib_vector_resize (&state->rd, 1) == 0)
+    {
+      rd = (xg_lr0reduct *) ulib_vector_back (&state->rd) - 1;
 
-  axn = ulib_vector_back (&state->axns);
+      rd->prod = prod;
+      (void) ulib_bitset_init (&rd->la);
 
-  axn [-1].sym = sym;
-  axn [-1].shift = shift;
-  axn [-1].no = no;
+      return rd;
+    }
 
+  ulib_log_printf (xg_log,
+                   "ERROR: Unable to append an LR(0) DFA reduction");
   return 0;
-
-error:
-  ulib_log_printf (xg_log, "ERROR: Unable to append a parse action.");
-  return -1;
 }
 
-/* Get parse action count.  */
+/* Get the number of reductions.  */
 unsigned int
-xg_lr0state_axn_count (const xg_lr0state *state)
+xg_lr0state_reduct_count (const xg_lr0state *state)
 {
-  return ulib_vector_length (&state->axns);
+  return ulib_vector_length (&state->rd);
 }
 
-/* Get a parse action.  */
-const xg_lr0axn *
-xg_lr0state_get_axn (const xg_lr0state *state, unsigned int n)
+/* Get the Nth reduction.  */
+xg_lr0reduct *
+xg_lr0state_get_reduct (const xg_lr0state *state, unsigned int n)
 {
-  return ulib_vector_elt (&state->axns, n);
+  return ulib_vector_elt (&state->rd, n);
 }
+
 
 /* Sort the items in an LR(0) state.  */
 static void
@@ -372,13 +378,14 @@ lr0set_equal (const xg_lr0state *a, const xg_lr0state *b)
 
 /* Display a debugging dump of an LR(0) state.  */
 void
-xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
+xg_lr0state_debug (FILE *out, const struct xg_grammar *g, const xg_lr0dfa *dfa,
                    const xg_lr0state *state)
 {
   unsigned int i, j, n, m;
   xg_prod *p;
   const xg_lr0item *it;
-  const xg_lr0axn *axn;
+  const xg_lr0trans *t;
+  const xg_lr0reduct *rd;
 
   /* Dump items.  */
   n = xg_lr0state_item_count (state);
@@ -408,21 +415,28 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g,
 
       fputc ('\n', out);
     }
-
-  /* Dump actions.  */
   fputc ('\n', out);
-  n = xg_lr0state_axn_count (state);
+
+  /* Dump transitions.  */
+  n = xg_lr0state_trans_count (state);
   for (i = 0; i < n; ++i)
     {
-      axn = xg_lr0state_get_axn (state, i);
+      t = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, i));
+      fputs ("\tOn ", out);
+      xg_symbol_name_debug (out, g, t->sym);
+      fprintf (out, " shift and go to state %u\n", t->dst);
+    }
+  fputc ('\n', out);
+
+  /* Dump reductions.  */
+  n = xg_lr0state_reduct_count (state);
+  for (i = 0; i < n; ++i)
+    {
+      rd = xg_lr0state_get_reduct (state, i);
 
       fputs ("\tOn ", out);
-      xg_symbol_name_debug (out, g, axn->sym);
-
-      if (axn->shift)
-        fprintf (out, " shift and go to state %u\n", axn->no);
-      else
-        fprintf (out, " reduce by production %u\n", axn->no);
+      xg_symset_debug (out, g, &rd->la);
+      fprintf (out, "\t  reduce by production %u\n", rd->prod);
     }
 }
 
@@ -620,45 +634,22 @@ xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n)
 }
 
 
-/* Create shift actions for all LR parsers.  */
-static int
-create_shift_actions (const xg_lr0dfa *dfa, xg_lr0state *state)
-{
-  unsigned int i, n, id;
-  const xg_lr0trans *t;
-
-  n = xg_lr0state_trans_count (state);
-  for (i = 0; i < n; ++i)
-    {
-      id = xg_lr0state_get_trans (state, i);
-      t = xg_lr0dfa_get_trans (dfa, id);
-
-      if (xg_lr0state_add_axn (state, t->sym, 1, t->dst) < 0)
-        return -1;
-    }
-
-  return 0;
-}
-
-/* Create actions for an SLR(1) parser.  */
+/* Create reductions for an SLR(1) parser.  */
 int
-xg_lr0dfa_make_slr_actions (const xg_grammar *g, xg_lr0dfa *dfa)
+xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
 {
-  unsigned int i, j, n, m;
+  unsigned int i, n;
   xg_lr0state *state;
   const xg_lr0item *it, *end;
   const xg_prod *p;
   const xg_symdef *def;
+  xg_lr0reduct *rd;
 
   n = xg_lr0dfa_state_count (dfa);
 
   for (i = 0; i < n; ++i)
     {
       state = ulib_vector_ptr_elt (&dfa->states, i);
-
-      /* Create shift actions.  */
-      if (create_shift_actions (dfa, state) < 0)
-        return -1;
 
       /* Walk over the final items and create each possible SLR(1)
          reduction.  */
@@ -670,14 +661,9 @@ xg_lr0dfa_make_slr_actions (const xg_grammar *g, xg_lr0dfa *dfa)
           if (it->dot == xg_prod_length (p))
             {
               def = xg_grammar_get_symbol (g, p->lhs);
-
-              m = ulib_bitset_max (&def->follow);
-              for (j = 0; j < m; ++j)
-                {
-                  if (ulib_bitset_is_set (&def->follow, j)
-                      && xg_lr0state_add_axn (state, j, 0, it->prod) < 0)
-                    return -1;
-                }
+              if ((rd = xg_lr0state_add_reduct (state, it->prod)) == 0
+                  || ulib_bitset_copy (&rd->la, &def->follow) < 0)
+                return -1;
             }
           ++it;
         }
@@ -702,7 +688,7 @@ xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
     {
       state = xg_lr0dfa_get_state (dfa, i);
       fprintf (out, "State %u:\n", i);
-      xg_lr0state_debug (out, g, state);
+      xg_lr0state_debug (out, g, dfa, state);
       fputc ('\n', out);
     }
 }

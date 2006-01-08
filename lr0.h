@@ -57,20 +57,16 @@ struct xg_lr0trans
 };
 typedef struct xg_lr0trans xg_lr0trans;
 
-/* A parse action in an LR(0) DFA state.  */
-struct xg_lr0axn
+/* A reduction in the LR(0) DFA.  */
+struct xg_lr0reduct
 {
-  /* Lookahead.  */
-  xg_sym sym;
+  /* Production number.  */
+  unsigned int prod;
 
-  /* Shift or reduce (non-terminal transitions are encoded as
-     shifts).  */
-  unsigned int shift;
-
-  /* State or production number.  */
-  unsigned int no;
+  /* Lookahead set.  */
+  ulib_bitset la;
 };
-typedef struct xg_lr0axn xg_lr0axn;
+typedef struct xg_lr0reduct xg_lr0reduct;
 
 /* A state in the LR(0) DFA for viable prefixes.  */
 struct xg_lr0state
@@ -84,8 +80,8 @@ struct xg_lr0state
   /* Transitions.  */
   ulib_vector tr;
 
-  /* Parse actions.  */
-  ulib_vector axns;
+  /* Reductions.  */
+  ulib_vector rd;
 };
 typedef struct xg_lr0state xg_lr0state;
 
@@ -121,15 +117,16 @@ unsigned int xg_lr0state_trans_count (const xg_lr0state *state);
 /* Get the Nth transition ID.  */
 unsigned int xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n);
 
-/* Add a parse action to an LR(0) state.  */
-int xg_lr0state_add_axn (xg_lr0state *state, xg_sym sym, unsigned int shift,
-                         unsigned int no);
+/* Add a reduction to an LR(0) state.  If a reduction on PROD already
+   exists, return a pointer to the existing reduction, otherwise
+   create a new one.  Return null on error.  */
+xg_lr0reduct *xg_lr0state_add_reduct (xg_lr0state *state, unsigned int prod);
 
-/* Get parse actions count.  */
-unsigned int xg_lr0state_axn_count (const xg_lr0state *state);
+/* Get the number of reductions.  */
+unsigned int xg_lr0state_reduct_count (const xg_lr0state *state);
 
-/* Get a parse action.  */
-const xg_lr0axn *xg_lr0state_get_axn (const xg_lr0state *state, unsigned int n);
+/* Get the Nth reduction.  */
+xg_lr0reduct *xg_lr0state_get_reduct (const xg_lr0state *state, unsigned int n);
 
 /* Compute the closure of an LR(0) state.  */
 int xg_lr0state_closure (const xg_grammar *g, xg_lr0state *state);
@@ -139,8 +136,9 @@ xg_lr0state *xg_lr0state_goto (const xg_grammar *g, const xg_lr0state *src,
                                xg_sym sym);
 
 /* Display a debugging dump of an LR(0) state.  */
+struct xg_lr0dfa;
 void xg_lr0state_debug (FILE *out, const xg_grammar *g,
-                        const xg_lr0state *state);
+                        const struct xg_lr0dfa *dfa, const xg_lr0state *state);
 
 
 /* LR(0) DFA.  */
@@ -184,7 +182,7 @@ xg_lr0trans *xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n);
 
 
 /* Create actions for an SLR(1) parser.  */
-int xg_lr0dfa_make_slr_actions (const xg_grammar *g, xg_lr0dfa *dfa);
+int xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Display a debugging dump of an LR(0) DFA.  */
 void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);

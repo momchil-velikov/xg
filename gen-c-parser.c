@@ -27,11 +27,12 @@ int
 xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 {
   int have_case;
-  int last_no;
-  xg_sym last_sym;
+  int last_dst;
+  xg_sym sym, k;
   unsigned int i, j, n, m;
-  xg_lr0state *state;
-  const xg_lr0axn *axn;
+  const xg_lr0state *state;
+  const xg_lr0trans *tr;
+  const xg_lr0reduct *rd;
   const xg_prod *p;
 
   /* Include the common parser declarations.  */
@@ -79,19 +80,33 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
                "  PUSH (%u);\n\n",
                i, i, i);
 
-      /* Emit parse actions.  */
-      m = xg_lr0state_axn_count (state);
+      /* Emit shift actions.  */
+      m = xg_lr0state_trans_count (state);
       for (j = 0; j < m; ++j)
         {
-          axn = xg_lr0state_get_axn (state, j);
-          if (xg_grammar_is_terminal_sym (g, axn->sym))
-            {
+          tr = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, j));
+          if (xg_grammar_is_terminal_sym (g, tr->sym))
+            fprintf (out,
+                     "  if (token == %u)\n"
+                     "    goto shift_%u;\n",
+                     tr->sym, tr->dst);
+        }
+
+      /* Emit reduce actions.  */
+      m = xg_lr0state_reduct_count (state);
+      for (j = 0; j < m; ++j)
+        {
+          rd = xg_lr0state_get_reduct (state, j);
+          
+          k = ulib_bitset_max (&rd->la);
+          for (sym = 0; sym < k; ++sym)
+            if (ulib_bitset_is_set (&rd->la, sym))
               fprintf (out,
                        "  if (token == %u)\n"
-                       "    goto %s_%u;\n",
-                       axn->sym, (axn->shift ? "shift" : "reduce"), axn->no);
-            }
+                       "    goto reduce_%u;\n",
+                       sym, rd->prod);
         }
+
       fputs ("  goto parse_error;\n\n\n", out);
     }
 
@@ -123,16 +138,16 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
     {
       state = xg_lr0dfa_get_state (dfa, i);
       have_case = 0;
-      last_no = -1;
-      last_sym = -1;
+      last_dst = -1;
+      sym = -1;
 
-      m = xg_lr0state_axn_count (state);
+      m = xg_lr0state_trans_count (state);
       for (j = 0; j < m; ++j)
         {
-          axn = xg_lr0state_get_axn (state, j);
-          if (!xg_grammar_is_terminal_sym (g, axn->sym))
+          tr = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, j));
+          if (! xg_grammar_is_terminal_sym (g, tr->sym))
             {
-              if (last_no != -1)
+              if (last_dst != -1)
                 {
                   if (!have_case)
                     {
@@ -143,20 +158,20 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
                   fprintf (out,
                            "      if (lhs == %u)\n"
                            "        goto push_%u;\n",
-                           last_sym, last_no);
+                           sym, last_dst);
                 }
               
-              last_no = axn->no;
-              last_sym = axn->sym;
+              last_dst = tr->dst;
+              sym = tr->sym;
             }
         }
 
-      if (last_no != -1)
+      if (last_dst != -1)
         {
           if (!have_case)
             fprintf (out, "    case %u:\n", i);
           
-          fprintf (out, "      goto push_%u;\n\n", last_no);
+          fprintf (out, "      goto push_%u;\n\n", last_dst);
         }
     }
   fputs ("    }\n\n", out);
