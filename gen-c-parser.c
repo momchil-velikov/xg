@@ -27,8 +27,8 @@ int
 xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 {
   int have_case;
-  xg_sym last_sym;
   int last_no;
+  xg_sym last_sym;
   unsigned int i, j, n, m;
   xg_lr0state *state;
   const xg_lr0axn *axn;
@@ -124,6 +124,7 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       state = xg_lr0dfa_get_state (dfa, i);
       have_case = 0;
       last_no = -1;
+      last_sym = -1;
 
       m = xg_lr0state_axn_count (state);
       for (j = 0; j < m; ++j)

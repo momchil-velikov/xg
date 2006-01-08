@@ -1,6 +1,6 @@
 /* parse.c - grammar definition parser
  *
- * Copyright (C) 2005 Momchil Velikov
+ * Copyright (C) 2005, 2006 Momchil Velikov
  *
  * This file is part of XG.
  *
@@ -442,7 +442,7 @@ parse_decls (parse_ctx *ctx)
 xg_grammar *
 xg_grammar_read (const char *name)
 {
-  int sts;
+  int sts = -1;
   parse_ctx ctx;
   char *start_name;
   xg_symdef *start_sym;
