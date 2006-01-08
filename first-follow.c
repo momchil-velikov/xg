@@ -214,10 +214,10 @@ xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form)
   while (n--)
     {
       if (! xg_nullable_sym (g, *form))
-        return 1;
+        return 0;
       ++form;
     }
-  return 0;
+  return 1;
 }
 
 /*
