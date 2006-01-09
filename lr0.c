@@ -422,7 +422,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g, const xg_lr0dfa *dfa,
   for (i = 0; i < n; ++i)
     {
       t = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, i));
-      fputs ("\tOn ", out);
+      fprintf (out, "\t%-4u: On ", t->id);
       xg_symbol_name_debug (out, g, t->sym);
       fprintf (out, " shift and go to state %u\n", t->dst);
     }
@@ -636,7 +636,7 @@ xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n)
 
 /* Create reductions for an SLR(1) parser.  */
 int
-xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
+xg_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa)
 {
   unsigned int i, n;
   xg_lr0state *state;

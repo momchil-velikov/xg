@@ -112,6 +112,9 @@ unsigned int xg_prod_length (const xg_prod *);
 
 /* Get the Nth symbol from the right hand side of a production.  */
 xg_sym xg_prod_get_symbol (const xg_prod *, unsigned int n);
+
+/* Get the right hand side of a production.  */
+xg_sym *xg_prod_get_symbols (const xg_prod *);
 
 
 /* Grammar.  */

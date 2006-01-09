@@ -163,6 +163,13 @@ xg_prod_get_symbol (const xg_prod *p, unsigned int n)
 {
   return *(xg_sym *) ulib_vector_elt (&p->rhs, n);
 }
+
+/* Get the right hand side of a production.  */
+xg_sym *
+xg_prod_get_symbols (const xg_prod *p)
+{
+  return ulib_vector_front (&p->rhs);
+}
 
 
 /* Grammar pointer scan function.  */

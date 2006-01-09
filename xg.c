@@ -18,12 +18,14 @@
  * along with XG; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include <stdio.h>
 #include "grammar.h"
 #include "lr0.h"
+#include "lalr.h"
 #include "gen-parser.h"
 #include "xg.h"
+
 #include <ulib/cache.h>
+#include <stdio.h>
 
 /* XG message log.  */
 ulib_log *xg_log;
@@ -90,7 +92,7 @@ main (int argc, char *argv [])
     }
 
   /* Initialize memory management.  */
-  if (xg__init_grammar () < 0 || xg__init_lr0dfa () < 0)
+  if (xg__init_grammar () < 0 || xg__init_lr0dfa () < 0 || xg__init_lalr () < 0)
     goto error;
 
   /* Parse the input file. */
@@ -104,13 +106,13 @@ main (int argc, char *argv [])
   if (1)
     {
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
-      xg_lr0dfa_make_slr_reductions (g, dfa);
+      xg_grammar_debug (stderr, g);
+      xg_make_lalr_reductions (g, dfa);
       xg_lr0dfa_debug (stderr, g, dfa);
       xg_gen_c_parser (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
     }
 
-  xg_grammar_debug (stderr, g);
   xg_grammar_del (g);
   ulib_gcrun ();
   return 0;

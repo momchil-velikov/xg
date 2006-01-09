@@ -47,20 +47,26 @@ xg__stack_init (xg__stack *stk)
   return 0;
 }
 
+/* Grow a stack.  */
+static int
+xg__stack_grow (xg__stack *stk)
+{
+  unsigned int nsz = stk->alloc * 2 + 1;
+  xg__stkent *nw = realloc (stk->base, stk->alloc * sizeof (xg__stkent));
+  if (nw == 0)
+    return -1;
+
+  stk->top = nw + (stk->top - stk->base);
+  stk->base = nw;
+  stk->alloc = nsz;
+}
+
 /* Push a state on the stack.  */
 static inline int
 xg__stack_push (xg__stack *stk, unsigned int state)
 {
-  if (stk->top - stk->base == stk->alloc)
-    {
-      unsigned int nsz = stk->alloc * 2 + 1;
-      xg__stkent *nw = realloc (stk->base, stk->alloc * sizeof (xg__stkent));
-      if (nw == 0)
-        return -1;
-      stk->top = nw + (stk->top - stk->base);
-      stk->base = nw;
-      stk->alloc = nsz;
-    }
+  if (stk->top - stk->base == stk->alloc && xg__stack_grow (stk) < 0)
+    return -1;
 
   stk->top->state = state;
   stk->top->value = 0;

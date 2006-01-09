@@ -181,8 +181,8 @@ unsigned int xg_lr0dfa_trans_count (const xg_lr0dfa *dfa);
 xg_lr0trans *xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n);
 
 
-/* Create actions for an SLR(1) parser.  */
-int xg_lr0dfa_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
+/* Create reductions for an SLR(1) parser.  */
+int xg_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Display a debugging dump of an LR(0) DFA.  */
 void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
