@@ -84,7 +84,7 @@ skip_comment (parse_ctx *ctx)
         {
           if ((ch = getc (ctx->in)) == EOF)
             break;
-          
+
           if (ch == '/')
             /* End of the comment found.  */
             return 0;
@@ -513,7 +513,8 @@ xg_grammar_read (const char *name)
   /* Create the grammar augmentation.  */
   start = xg_grammar_get_prod (ctx.gram, 0);
   start->lhs = start_sym->code;
-  if (xg_prod_add (start, ctx.gram->start) < 0)
+  if (xg_prod_add (start, ctx.gram->start) < 0
+      || xg_prod_add (start, XG_EOF) < 0)
     goto error;
 
   ctx.gram->start = start_sym->code;
