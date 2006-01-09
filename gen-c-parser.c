@@ -94,20 +94,32 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 
       /* Emit reduce actions.  */
       m = xg_lr0state_reduct_count (state);
-      for (j = 0; j < m; ++j)
+      if (m == 1)
         {
-          rd = xg_lr0state_get_reduct (state, j);
-          
-          k = ulib_bitset_max (&rd->la);
-          for (sym = 0; sym < k; ++sym)
-            if (ulib_bitset_is_set (&rd->la, sym))
-              fprintf (out,
-                       "  if (token == %u)\n"
-                       "    goto reduce_%u;\n",
-                       sym, rd->prod);
+          /* If there's only one reduction, jump straight to the
+             reduction code, without checking lookaheads.  The
+             eventual error will be detected later, when we have to
+             shift the errorneous token.  */
+          rd = xg_lr0state_get_reduct (state, 0);
+          fprintf (out, "  goto reduce_%u;\n\n\n", rd->prod);
         }
+      else
+        {
+          for (j = 0; j < m; ++j)
+            {
+              rd = xg_lr0state_get_reduct (state, j);
+            
+              k = ulib_bitset_max (&rd->la);
+              for (sym = 0; sym < k; ++sym)
+                if (ulib_bitset_is_set (&rd->la, sym))
+                  fprintf (out,
+                           "  if (token == %u)\n"
+                           "    goto reduce_%u;\n",
+                           sym, rd->prod);
+            }
 
-      fputs ("  goto parse_error;\n\n\n", out);
+          fputs ("  goto parse_error;\n\n\n", out);
+        }
     }
 
   /* Reduce by production 0 is the accepting state.  */

@@ -113,12 +113,6 @@ xg_grammar_compute_follow (const xg_grammar *g)
   xg_symdef *ls, *rs, *fs;
   xg_sym sym;
 
-  /* Add the end-of-input marker to the FOLLOW set of the start
-     symbol.  */
-  ls = xg_grammar_get_symbol (g, g->start);
-  if (ulib_bitset_set (&ls->follow, XG_EOF) < 0)
-    goto error;
-
   n = xg_grammar_prod_count (g);
   chg = 1;
   while (chg)
