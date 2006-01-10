@@ -4,7 +4,7 @@ Z : A ;
 
 A :   a B b 
     | a d c
-    | b B c ;
+    | b B c 
     | b d d ;
 
 B : d ;

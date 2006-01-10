@@ -514,7 +514,8 @@ xg_grammar_read (const char *name)
   start = xg_grammar_get_prod (ctx.gram, 0);
   start->lhs = start_sym->code;
   if (xg_prod_add (start, ctx.gram->start) < 0
-      || xg_prod_add (start, XG_EOF) < 0)
+      || xg_prod_add (start, XG_EOF) < 0
+      || xg_symdef_add_prod (start_sym, 0) < 0)
     goto error;
 
   ctx.gram->start = start_sym->code;

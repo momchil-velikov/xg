@@ -174,6 +174,12 @@ int xg_nullable_sym (const xg_grammar *g, xg_sym s);
 int xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form);
 
 
+/* Output to OUT a random sentence from the language, defined by the
+   grammar G.  The parameter SIZE indirectly influences the length of
+   the generated sentence.  */
+int xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size);
+
+
 /* Display a symbol name.  */
 void xg_symbol_name_debug (FILE *out, const xg_grammar *g, xg_sym sym);
 

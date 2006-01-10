@@ -103,7 +103,7 @@ main (int argc, char *argv [])
   if (xg_grammar_compute_first (g) < 0 || xg_grammar_compute_follow (g) < 0)
     goto error;
 
-  if (1)
+  if (0)
     {
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
       xg_grammar_debug (stderr, g);
@@ -112,7 +112,10 @@ main (int argc, char *argv [])
       xg_gen_c_parser (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
     }
-
+  else
+    {
+      xg_make_random_sentence (stdout, g, 10);
+    }
   xg_grammar_del (g);
   ulib_gcrun ();
   return 0;
