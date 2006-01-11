@@ -194,7 +194,7 @@ getlex (parse_ctx *ctx)
             }
           else
             {
-              ungetc (ch, ctx->in);;
+              ungetc (ch, ctx->in);
               ch = '/';
             }
         }
@@ -217,20 +217,30 @@ getlex (parse_ctx *ctx)
 
   if (ch == '\'')
     return scan_token_literal (ctx);
-  else if (isalpha (ch) || ch == '%')
+  else
     {
       scan_word (ctx, ch);
       if (strcmp (ctx->value.word, "%start") == 0)
         {
           free (ctx->value.word);
           ctx->token = TOKEN_START;
+          return 0;
         }
-      return 0;
-    }
-  else
-    {
-      error (ctx, "Invalid token ``%c''", ch);
-      return -1;
+      else
+        {
+          /* Check word contains at least one alphabetic
+             character.  */
+          char *p = ctx->value.word;
+          while (*p)
+            {
+              if (isalpha (*p))
+                return 0;
+              ++p;
+            }
+          
+          errorv (ctx, "Invalid token ``%s''",  ctx->value.word);
+          return -1;
+        }
     }
 }
 
