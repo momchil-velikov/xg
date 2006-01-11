@@ -112,9 +112,13 @@ main (int argc, char *argv [])
       xg_gen_c_parser (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
     }
-  else
+  else if (0)
     {
       xg_make_random_sentence (stdout, g, 10);
+    }
+  else
+    {
+      xg_grammar_debug (stderr, g);
     }
   xg_grammar_del (g);
   ulib_gcrun ();

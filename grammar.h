@@ -48,6 +48,22 @@ extern const ulib_bitset *xg_epsilon_set;
 /* A terminal set, containing only the end of input symbol.  */
 extern const ulib_bitset *xg_eof_set;
 
+/* Symbol associativity.  */
+enum xg_assoc
+{
+  xg_assoc_none,
+  xg_assoc_left,
+  xg_assoc_right
+};
+
+/* Symbol kind.  */
+enum xg_sym_kind
+{
+  xg_implicit_terminal,
+  xg_explicit_terminal,
+  xg_non_terminal
+};
+
 /* Grammar symbol definition.  */
 struct xg_symdef
 {
@@ -70,7 +86,13 @@ struct xg_symdef
   ulib_vector prods;
 
   /* Terminal flag.  */
-  unsigned int terminal : 1;
+  unsigned int terminal : 2;
+
+  /* Precedence.  */
+  unsigned int prec : 16;
+
+  /* Associtivity.  */
+  unsigned int assoc : 2;
 };
 typedef struct xg_symdef xg_symdef;
 
@@ -143,6 +165,9 @@ void xg_grammar_del (xg_grammar *);
 /* Add a symbol definition to a grammar.  Return symbol index or
    negative on error.  */
 xg_sym xg_grammar_add_symbol (xg_grammar *, xg_symdef *);
+
+/* Set the definition of a symbol with code SYM.  */
+int xg_grammar_set_symbol (xg_grammar *, xg_sym, xg_symdef *);
 
 /* Get the symbol definition for the symbol CODE.  */
 xg_symdef *xg_grammar_get_symbol (const xg_grammar *, xg_sym code);

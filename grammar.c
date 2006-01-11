@@ -22,6 +22,7 @@
 #include "xg.h"
 #include <ulib/cache.h>
 #include <ulib/bitset.h>
+#include <assert.h>
 
 /* Symbol definition cache.  */
 static ulib_cache *symdef_cache;
@@ -65,7 +66,9 @@ xg_symdef_new (char *name)
     {
       def->code = 0;
       def->name = name;
-      def->terminal = 1;
+      def->terminal = xg_implicit_terminal;
+      def->prec = 0;
+      def->assoc = xg_assoc_right;
 
       return def;
     }
@@ -179,8 +182,7 @@ grammar_gcscan (xg_grammar *g, void **ptr, unsigned int sz)
   int cnt = 0;
   unsigned int i, n;
 
-  cnt = ulib_vector_length (&g->syms) -  XG_TOKEN_LITERAL_MAX;
-  cnt += ulib_vector_length (&g->prods);
+  cnt = ulib_vector_length (&g->syms) + ulib_vector_length (&g->prods);
 
   if ((unsigned int) cnt > sz)
     return -cnt;
@@ -249,7 +251,23 @@ xg_grammar_add_symbol (xg_grammar *g, xg_symdef *def)
       return -1;
     }
 
-  return ulib_vector_length (&g->syms) - 1;
+  def->code = ulib_vector_length (&g->syms) - 1;
+  return 0;
+}
+
+/* Set the definition of a symbol with code SYM.  */
+int
+xg_grammar_set_symbol (xg_grammar *g, xg_sym sym, xg_symdef *def)
+{
+  assert (sym <= XG_TOKEN_LITERAL_MAX);
+  assert (ulib_vector_ptr_elt (&g->syms, sym) == 0);
+
+  def->code = sym;
+  if (ulib_vector_set_ptr (&g->syms, sym, def) == 0)
+    return 0;
+
+  ulib_log_printf (xg_log, "ERROR: Unable to set a symbol definition");
+  return -1;
 }
 
 /* Get the symbol definition for the symbol CODE.  */
@@ -291,7 +309,7 @@ xg_grammar_is_terminal_sym (const xg_grammar *g, xg_sym sym)
 
   def = xg_grammar_get_symbol (g, sym);
 
-  return def == 0 ? 1 : def->terminal;
+  return def->terminal != xg_non_terminal;
 }
 
 
@@ -404,10 +422,26 @@ xg_symset_debug (FILE *out, const xg_grammar *g, const ulib_bitset *set)
 void
 xg_symdef_debug (FILE *out, const xg_grammar *g, const xg_symdef *def)
 {
-  fprintf (out, "Symbol %u (%s):\n\tname: %s\n", def->code,
-           def->terminal ? "terminal" : "non-terminal", def->name);
+  fprintf (out, "Symbol %u (%s",
+           def->code,
+           def->terminal == xg_non_terminal? "non-terminal" : "terminal");
 
-  if (def->terminal == 0)
+  if (def->terminal != xg_non_terminal)
+    fprintf (out, ", %s, %u):\n",
+             (def->assoc == xg_assoc_none
+              ? "none"
+              : def->assoc == xg_assoc_left
+              ? "left" : "right"),
+             def->prec);
+  else
+    fputs ("):\n", out);
+
+  if (def->name)
+    fprintf (out, "\tname: %s\n", def->name);
+  else
+    fprintf (out, "\tname: '%c'\n", def->code);
+
+  if (def->terminal == xg_non_terminal)
     {
       if (xg_symdef_prod_count (def) != 0)
         {
@@ -429,7 +463,7 @@ xg_symdef_debug (FILE *out, const xg_grammar *g, const xg_symdef *def)
     }
 }
 
-/* Display a debugging dump a production.  */
+/* Display a debugging dump of a production.  */
 void
 xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
 {

@@ -1,5 +1,9 @@
 %start stmt-list ;
 
+%left '*' '/' '%';
+%left '+' '-';
+%right '=';
+
 expr :
         expr/no-commas
     |   expr ',' expr/no-commas
@@ -8,7 +12,10 @@ expr :
 expr/no-commas :
         IDENT
     |   expr/no-commas '+' expr/no-commas
+    |   expr/no-commas '-' expr/no-commas
     |   expr/no-commas '*' expr/no-commas
+    |   expr/no-commas '/' expr/no-commas
+    |   expr/no-commas '%' expr/no-commas
     ;       
 
 stmt :

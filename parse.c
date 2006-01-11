@@ -54,6 +54,9 @@ struct parse_ctx
 
   /* The build-in-progress grammar. */
   xg_grammar *gram;
+
+  /* Next token precedence level.  */
+  unsigned int prec;
 };
 typedef struct parse_ctx parse_ctx;
 
@@ -62,13 +65,17 @@ typedef struct parse_ctx parse_ctx;
   ulib_log_printf (xg_log, "%s:%d: ERROR: " fmt,        \
                    ctx->name, ctx->lineno, __VA_ARGS__)
 
-#define error(ctx, fmt, ...)                                            \
+#define error(ctx, fmt)                                                 \
   ulib_log_printf (xg_log, "%s:%d: ERROR: " fmt, ctx->name, ctx->lineno)
 
 /* Token encoding.  */
-#define TOKEN_WORD 257
-#define TOKEN_LITERAL 258
-#define TOKEN_START  259
+#define TOKEN_WORD    256
+#define TOKEN_LITERAL 257
+#define TOKEN_START   258
+#define TOKEN_TOKEN   259
+#define TOKEN_LEFT    260
+#define TOKEN_RIGHT   261
+#define TOKEN_NASSOC  262
 
 /* Lexical analyzer.  */
 static int
@@ -172,6 +179,58 @@ scan_word (parse_ctx *ctx, int ch)
   ctx->token = TOKEN_WORD;
 }
 
+/* Check whether the CTX->VALUE.WORD contains at least one alphabetic
+   character.  On error, release the word.  */
+static int
+check_valid_word (parse_ctx *ctx)
+{
+  const char *p = ctx->value.word;
+
+  while (*p)
+    {
+      if (isalpha (*p))
+        return 0;
+      ++p;
+    }
+
+  errorv (ctx, "Invalid token ``%s''",  ctx->value.word);
+  free (ctx->value.word);
+  return -1;
+}
+
+/* Check whether a word is on of the reserved keywords.  */
+static int
+recognize_keyword (parse_ctx *ctx)
+{
+  static const struct kw
+  {
+    const char *name;
+    unsigned int token;
+  } kw [] =
+      {
+        { "%start",    TOKEN_START  },
+        { "%token",    TOKEN_TOKEN  },
+        { "%left",     TOKEN_LEFT   },
+        { "%right",    TOKEN_RIGHT  },
+        { "%nonassoc", TOKEN_NASSOC },
+        { 0, 0 }
+      };
+
+  const struct kw *p;
+
+  for (p = kw; p->name; ++p)
+    {
+      if (strcmp (ctx->value.word, p->name) == 0)
+        {
+          free (ctx->value.word);
+          ctx->token = p->token;
+          return 0;
+        }
+    }
+
+  return check_valid_word (ctx);
+}
+
 static int
 getlex (parse_ctx *ctx)
 {
@@ -220,27 +279,10 @@ getlex (parse_ctx *ctx)
   else
     {
       scan_word (ctx, ch);
-      if (strcmp (ctx->value.word, "%start") == 0)
-        {
-          free (ctx->value.word);
-          ctx->token = TOKEN_START;
-          return 0;
-        }
+      if (*ctx->value.word == '%')
+        return recognize_keyword (ctx);
       else
-        {
-          /* Check word contains at least one alphabetic
-             character.  */
-          char *p = ctx->value.word;
-          while (*p)
-            {
-              if (isalpha (*p))
-                return 0;
-              ++p;
-            }
-          
-          errorv (ctx, "Invalid token ``%s''",  ctx->value.word);
-          return -1;
-        }
+        return check_valid_word (ctx);
     }
 }
 
@@ -255,6 +297,11 @@ getlex (parse_ctx *ctx)
    decl: directive | prod
 
    directive: '%start' word ';'
+            | '%token' symbol-list ';'
+            | '%left' symbol-list ';'
+            | '%right' symbol-list ';'
+            | '%nonassoc' symbol-list ';'
+
 
    prod: word ':' rhs ';'
 
@@ -265,6 +312,25 @@ getlex (parse_ctx *ctx)
 
    symbol: word | token-literal
 */
+
+/* Find or create a symbol definition for the token literal CH.  */
+static xg_symdef *
+find_or_create_symbol_ch (parse_ctx *ctx, xg_sym ch)
+{
+  xg_symdef *def;
+
+  if ((def = xg_grammar_get_symbol (ctx->gram, ch)) == 0)
+    {
+      if ((def = xg_symdef_new (0)) == 0)
+        return 0;
+
+      def->terminal = xg_explicit_terminal;
+      if (xg_grammar_set_symbol (ctx->gram, ch, def) < 0)
+        return 0;
+    }
+
+  return def;
+}
 
 /* Find or create a symbol with name NAME.  In either case the
    function consumes the NAME parameter.  */
@@ -282,7 +348,7 @@ find_or_create_symbol (parse_ctx *ctx, char *name)
         }
 
       xg_symtab_insert (&ctx->symtab, def);
-      if ((def->code = xg_grammar_add_symbol (ctx->gram, def)) < 0)
+      if (xg_grammar_add_symbol (ctx->gram, def) < 0)
         return 0;
     }
   else
@@ -305,7 +371,8 @@ parse_symbol_list (parse_ctx *ctx, xg_prod *prod)
         }
       else /* ctx->token == TOKEN_LITERAL */
         {
-          if (xg_prod_add (prod, ctx->value.chr) < 0)
+          if ((def = find_or_create_symbol_ch (ctx, ctx->value.chr)) == 0
+              || xg_prod_add (prod, def->code) < 0)
             return -1;
         }
 
@@ -365,7 +432,13 @@ parse_prod (parse_ctx *ctx)
   /* Find or create the left hand side symbol.  */
   if ((lhs = find_or_create_symbol (ctx, ctx->value.word)) == 0)
     return -1;
-  lhs->terminal = 0;
+
+  if (lhs->terminal == xg_explicit_terminal)
+    {
+      errorv (ctx, "Symbol ``%s'' already declared as terminal", lhs->name);
+      return -1;
+    }
+  lhs->terminal = xg_non_terminal;
 
   if (getlex (ctx) < 0 || ctx->token != ':')
     {
@@ -429,20 +502,109 @@ parse_start_directive (parse_ctx *ctx)
   return 0;
 }
 
+static void
+perform_token_directive_operation (parse_ctx *ctx, xg_symdef *def, int dir)
+{
+  def->terminal = xg_explicit_terminal;
+  def->prec = ctx->prec;
+
+  switch (dir)
+    {
+    case TOKEN_TOKEN:
+      def->prec = 0;
+      def->assoc = xg_assoc_none;
+      break;
+
+    case TOKEN_LEFT:
+      def->assoc = xg_assoc_left;
+      break;
+
+    case TOKEN_RIGHT:
+      def->assoc = xg_assoc_right;
+      break;
+
+    case TOKEN_NASSOC:
+      def->assoc = xg_assoc_none;
+      break;
+
+    default:
+      assert ("invalid token directive" == 0);
+    }
+}
+
+static int
+parse_token_directive (parse_ctx *ctx)
+{
+  int dir;
+  xg_symdef *def;
+
+  dir = ctx->token;
+
+  if (getlex (ctx) < 0)
+    return -1;
+
+  while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
+    {
+      if (ctx->token == TOKEN_WORD)
+        {
+          if ((def = find_or_create_symbol (ctx, ctx->value.word)) == 0)
+            return -1;
+        }
+      else /* ctx->token == TOKEN_LITERAL */
+        {
+          if ((def = find_or_create_symbol_ch (ctx, ctx->value.chr)) == 0)
+            return -1;
+        }
+
+      perform_token_directive_operation (ctx, def, dir);
+
+      if (getlex (ctx) < 0)
+        return -1;
+    }
+
+  if (ctx->token != ';')
+    {
+      error (ctx, "Invalid token directive -- expected ; (semicolon)");
+      return -1;
+    }
+
+  if (getlex (ctx) < 0)
+    return -1;
+
+  if (dir == TOKEN_LEFT || dir == TOKEN_RIGHT || dir == TOKEN_NASSOC)
+    ++ctx->prec;
+
+  return 0;
+}
+
 static int
 parse_decls (parse_ctx *ctx)
 {
+  int sts;
+
   if (getlex  (ctx) < 0)
     return -1;
 
   while (ctx->token > 0)
     {
-      if (ctx->token == TOKEN_START)
+      switch (ctx->token)
         {
-          if (parse_start_directive (ctx) < 0)
-            return -1;
+        case TOKEN_START:
+          sts = parse_start_directive (ctx);
+          break;
+
+        case TOKEN_TOKEN:
+        case TOKEN_LEFT:
+        case TOKEN_RIGHT:
+        case TOKEN_NASSOC:
+          sts = parse_token_directive (ctx);
+          break;
+
+        default:
+          sts = parse_prod (ctx);
         }
-      else if (parse_prod (ctx) < 0)
+
+      if (sts < 0)
         return -1;
     }
 
@@ -462,6 +624,7 @@ xg_grammar_read (const char *name)
   ctx.name = name;
   ctx.lineno = 1;
   ctx.token = 0;
+  ctx.prec = 1;
 
   /* Open the input file stream.  */
   if ((ctx.in = fopen (name, "r")) != 0)
@@ -504,8 +667,8 @@ xg_grammar_read (const char *name)
   strcpy (start_name, "<start>");
   if ((start_sym = xg_symdef_new (start_name)) == 0)
     goto error_name;
-  start_sym->terminal = 0;
-  if ((start_sym->code = xg_grammar_add_symbol (ctx.gram, start_sym)) < 0)
+  start_sym->terminal = xg_non_terminal;
+  if (xg_grammar_add_symbol (ctx.gram, start_sym) < 0)
     goto error;
 
   /* Fill the start production details.  */
