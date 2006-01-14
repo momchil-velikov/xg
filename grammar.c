@@ -68,7 +68,7 @@ xg_symdef_new (char *name)
       def->name = name;
       def->terminal = xg_implicit_terminal;
       def->prec = 0;
-      def->assoc = xg_assoc_right;
+      def->assoc = xg_assoc_unknown;
 
       return def;
     }
@@ -113,6 +113,8 @@ xg_prod_new (xg_sym lhs)
     {
       prod->lhs = lhs;
       (void) ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym), 0);
+      prod->prec = 0;
+      prod->assoc = xg_assoc_unknown;
       return prod;
     }
 
@@ -422,19 +424,21 @@ xg_symset_debug (FILE *out, const xg_grammar *g, const ulib_bitset *set)
 void
 xg_symdef_debug (FILE *out, const xg_grammar *g, const xg_symdef *def)
 {
-  fprintf (out, "Symbol %u (%s",
+  fprintf (out, "Symbol %u [%s",
            def->code,
            def->terminal == xg_non_terminal? "non-terminal" : "terminal");
 
   if (def->terminal != xg_non_terminal)
-    fprintf (out, ", %s, %u):\n",
-             (def->assoc == xg_assoc_none
+    fprintf (out, ", %s, %u]:\n",
+             (def->assoc == xg_assoc_unknown
+              ? "unknown"
+              : def->assoc == xg_assoc_none
               ? "none"
               : def->assoc == xg_assoc_left
               ? "left" : "right"),
              def->prec);
   else
-    fputs ("):\n", out);
+    fputs ("]:\n", out);
 
   if (def->name)
     fprintf (out, "\tname: %s\n", def->name);
@@ -470,6 +474,15 @@ xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
   xg_sym sym;
   xg_symdef *def;
   unsigned int i, n;
+
+  fprintf (out, " [%7s, %u] ",
+           (p->assoc == xg_assoc_unknown
+            ? "unknown"
+            : p->assoc == xg_assoc_none
+            ? "none"
+            : p->assoc == xg_assoc_left
+            ? "left" : "right"),
+           p->prec);
 
   def = xg_grammar_get_symbol (g, p->lhs);
   fprintf (out, "%s ->", def->name);

@@ -51,6 +51,7 @@ extern const ulib_bitset *xg_eof_set;
 /* Symbol associativity.  */
 enum xg_assoc
 {
+  xg_assoc_unknown,
   xg_assoc_none,
   xg_assoc_left,
   xg_assoc_right
@@ -119,6 +120,12 @@ struct xg_prod
 
   /* Right hand side: sentenial form.  */
   xg_sentenial_form rhs;
+
+  /* Precedence.  */
+  unsigned int prec : 16;
+
+  /* Associativity.  */
+  unsigned int assoc : 2;
 };
 typedef struct xg_prod xg_prod;
 

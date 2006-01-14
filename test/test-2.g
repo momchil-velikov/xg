@@ -1,9 +1,19 @@
 
+
+%left ')' ;
+%left '+' '-' ;
+%left '*' ;
+%right UMINUS ;
+%right '(' ;
+
 expr : NUMBER
     |  ID
-    |  expr '+' expr
-    |  expr '*' expr
     |  ID '(' args' ')'
+    |  '(' expr ')'
+    | '-' expr %prec UMINUS
+    |  expr '+' expr
+    |  expr '-' expr
+    |  expr '*' expr
     ;
 
 args' : /* empty */ | args ;

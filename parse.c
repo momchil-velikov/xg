@@ -76,6 +76,7 @@ typedef struct parse_ctx parse_ctx;
 #define TOKEN_LEFT    260
 #define TOKEN_RIGHT   261
 #define TOKEN_NASSOC  262
+#define TOKEN_PREC    263
 
 /* Lexical analyzer.  */
 static int
@@ -213,6 +214,7 @@ recognize_keyword (parse_ctx *ctx)
         { "%left",     TOKEN_LEFT   },
         { "%right",    TOKEN_RIGHT  },
         { "%nonassoc", TOKEN_NASSOC },
+        { "%prec",     TOKEN_PREC },
         { 0, 0 }
       };
 
@@ -358,9 +360,16 @@ find_or_create_symbol (parse_ctx *ctx, char *name)
 }
 
 static int
-parse_symbol_list (parse_ctx *ctx, xg_prod *prod)
+parse_rhs_alternative (parse_ctx *ctx, xg_symdef *lhs)
 {
+  xg_prod *prod;
   xg_symdef *def;
+
+  /* Create a production for the alternaive ... */
+  if ((prod = xg_prod_new (lhs->code)) == 0)
+    return -1;
+
+  /* ... parse its right hand side ...  */
   while (ctx->token == TOKEN_WORD || ctx->token == TOKEN_LITERAL)
     {
       if (ctx->token == TOKEN_WORD)
@@ -380,19 +389,53 @@ parse_symbol_list (parse_ctx *ctx, xg_prod *prod)
         return -1;
     }
 
-  return 0;
-}
+  /* Parse optional explicit precedence specification.  */
+  if (ctx->token == TOKEN_PREC)
+    {
+      if (getlex (ctx) < 0)
+        return -1;
 
-static int
-parse_rhs_alternative (parse_ctx *ctx, xg_symdef *lhs)
-{
-  xg_prod *prod;
+      if (ctx->token == TOKEN_WORD)
+        {
+          if ((def = find_or_create_symbol (ctx, ctx->value.word)) == 0)
+            return -1;
 
-  /* Create a production for the alternaive and parse its right hand
-     side.  Add the production to the grammar.  */
-  if ((prod = xg_prod_new (lhs->code)) == 0
-      || parse_symbol_list (ctx, prod) < 0
-      || xg_grammar_add_prod (ctx->gram, prod) < 0
+          if (def->assoc == xg_assoc_unknown)
+            {
+              errorv (ctx, "Unknown precedence and associativity of ``s''",
+                      def->name);
+              return -1;
+            }
+
+        }
+      else if (ctx->token == TOKEN_LITERAL)
+        {
+          if ((def = find_or_create_symbol_ch (ctx, ctx->value.chr)) == 0)
+            return -1;
+
+          if (def->assoc == xg_assoc_unknown)
+            {
+              errorv (ctx, "Unknown precedence and associativity of '%c'",
+                      def->code);
+              return -1;
+            }
+        }
+      else
+        {
+          error (ctx, "Expected a non-terminal after %prec");
+          return -1;
+        }
+
+      prod->assoc = def->assoc;
+      prod->prec = def->prec;
+
+      if (getlex (ctx) < 0)
+        return -1;
+    }
+
+  /* ... and add the production to the grammar and to the left hand
+     side symbol definition.  */
+  if (xg_grammar_add_prod (ctx->gram, prod) < 0
       || xg_symdef_add_prod (lhs, xg_grammar_prod_count (ctx->gram) - 1) < 0)
     return -1;
   else
@@ -611,6 +654,42 @@ parse_decls (parse_ctx *ctx)
   return (ctx->token == 0) ? 0 : -1;
 }
 
+/* Set precedence and associativity of productions.  */
+static void
+finish_productions (xg_grammar *g)
+{
+  unsigned int i, nprod, nsyms;
+  const xg_sym *sym;
+  xg_prod *p;
+
+  /* Process each production (except the start one).  */
+  nprod = xg_grammar_prod_count (g);
+  for (i = 1; i < nprod; ++i)
+    {
+      p = xg_grammar_get_prod (g, i);
+
+      /* Skip null productions and prodictions, which has their
+         precedence and associativity already assigned.  */
+      if ((nsyms = xg_prod_length (p)) == 0 || p->assoc != xg_assoc_unknown)
+        continue;
+
+      /* Set the production precedence and associativity to that of
+         the rightmost terminal symbol.  */
+      sym = xg_prod_get_symbols (p) + nsyms;
+      while (nsyms--)
+        {
+          --sym;
+          if (xg_grammar_is_terminal_sym (g, *sym))
+            {
+              const xg_symdef *def = xg_grammar_get_symbol (g, *sym);
+              p->prec = def->prec;
+              p->assoc = def->assoc;
+              break;
+            }
+        }
+    }
+}
+
 xg_grammar *
 xg_grammar_read (const char *name)
 {
@@ -635,7 +714,7 @@ xg_grammar_read (const char *name)
           /* Create the grammar object.  */
           if ((ctx.gram = xg_grammar_new ()) != 0)
             {
-              /* Create the start production and add it ro the
+              /* Create the start production and add it to the
                  grammar.  Production details will be filled
                  later.  */
               if ((start = xg_prod_new (0)) != 0
@@ -692,6 +771,9 @@ xg_grammar_read (const char *name)
     goto error;
 
   ctx.gram->start = start_sym->code;
+  
+  /* Set precedence and associativity of productions.  */
+  finish_productions (ctx.gram);
 
   return ctx.gram;
 
