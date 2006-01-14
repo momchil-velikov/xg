@@ -426,8 +426,7 @@ parse_rhs_alternative (parse_ctx *ctx, xg_symdef *lhs)
           return -1;
         }
 
-      prod->assoc = def->assoc;
-      prod->prec = def->prec;
+      prod->prec = def->code;
 
       if (getlex (ctx) < 0)
         return -1;
@@ -670,7 +669,7 @@ finish_productions (xg_grammar *g)
 
       /* Skip null productions and prodictions, which has their
          precedence and associativity already assigned.  */
-      if ((nsyms = xg_prod_length (p)) == 0 || p->assoc != xg_assoc_unknown)
+      if ((nsyms = xg_prod_length (p)) == 0 || p->prec != XG_EPSILON)
         continue;
 
       /* Set the production precedence and associativity to that of
@@ -682,8 +681,7 @@ finish_productions (xg_grammar *g)
           if (xg_grammar_is_terminal_sym (g, *sym))
             {
               const xg_symdef *def = xg_grammar_get_symbol (g, *sym);
-              p->prec = def->prec;
-              p->assoc = def->assoc;
+              p->prec = def->code;
               break;
             }
         }

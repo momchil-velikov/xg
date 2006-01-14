@@ -113,8 +113,7 @@ xg_prod_new (xg_sym lhs)
     {
       prod->lhs = lhs;
       (void) ulib_vector_init (&prod->rhs, ULIB_ELT_SIZE, sizeof (xg_sym), 0);
-      prod->prec = 0;
-      prod->assoc = xg_assoc_unknown;
+      prod->prec = XG_EPSILON;
       return prod;
     }
 
@@ -475,14 +474,20 @@ xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
   xg_symdef *def;
   unsigned int i, n;
 
-  fprintf (out, " [%7s, %u] ",
-           (p->assoc == xg_assoc_unknown
-            ? "unknown"
-            : p->assoc == xg_assoc_none
-            ? "none"
-            : p->assoc == xg_assoc_left
-            ? "left" : "right"),
-           p->prec);
+  def = xg_grammar_get_symbol (g, p->prec);
+  if (def != 0)
+    {
+      fprintf (out, " [%7s, %u] ",
+               (def->assoc == xg_assoc_unknown
+                ? "unknown"
+                : def->assoc == xg_assoc_none
+                ? "none"
+                : def->assoc == xg_assoc_left
+                ? "left" : "right"),
+               def->prec);
+    }
+  else
+    fputs (" [unknown, 0] ", out);
 
   def = xg_grammar_get_symbol (g, p->lhs);
   fprintf (out, "%s ->", def->name);

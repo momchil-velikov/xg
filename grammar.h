@@ -121,11 +121,8 @@ struct xg_prod
   /* Right hand side: sentenial form.  */
   xg_sentenial_form rhs;
 
-  /* Precedence.  */
-  unsigned int prec : 16;
-
-  /* Associativity.  */
-  unsigned int assoc : 2;
+  /* Rightmost terminal.  */
+  xg_sym prec;
 };
 typedef struct xg_prod xg_prod;
 
