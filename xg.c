@@ -103,11 +103,12 @@ main (int argc, char *argv [])
   if (xg_grammar_compute_first (g) < 0 || xg_grammar_compute_follow (g) < 0)
     goto error;
 
-  if (0)
+  if (1)
     {
       xg_lr0dfa *dfa = xg_lr0dfa_new (g);
-      xg_grammar_debug (stderr, g);
       xg_make_lalr_reductions (g, dfa);
+      xg_resolve_conflicts (g, dfa);
+      xg_grammar_debug (stderr, g);
       xg_lr0dfa_debug (stderr, g, dfa);
       xg_gen_c_parser (stdout, g, dfa);
       xg_lr0dfa_del (dfa);
@@ -122,6 +123,8 @@ main (int argc, char *argv [])
     }
   xg_grammar_del (g);
   ulib_gcrun ();
+
+  ulib_log_write (xg_log, stderr);
   return 0;
 
 error:

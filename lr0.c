@@ -160,6 +160,14 @@ xg_lr0state_add_trans (xg_lr0state *state, unsigned int no)
   return 0;
 }
 
+/* Remove a transition from an LR(0) state.  */
+void
+xg_lr0state_del_trans (xg_lr0state *state, unsigned int idx)
+{
+  if (idx < ulib_vector_length (&state->tr))
+    ulib_vector_remove (&state->tr, idx);
+}
+
 /* Get the number of transitions.  */
  unsigned int
 xg_lr0state_trans_count (const xg_lr0state *state)
@@ -206,6 +214,14 @@ xg_lr0state_add_reduct (xg_lr0state *state, unsigned int prod)
   ulib_log_printf (xg_log,
                    "ERROR: Unable to append an LR(0) DFA reduction");
   return 0;
+}
+
+/* Delete the N-th reduction from an LR(0) state.  */
+void
+xg_lr0state_del_reduct (xg_lr0state *state, unsigned int n)
+{
+  if (n < ulib_vector_length (&state->rd))
+    ulib_vector_remove (&state->rd, n);
 }
 
 /* Get the number of reductions.  */
@@ -433,11 +449,16 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g, const xg_lr0dfa *dfa,
   for (i = 0; i < n; ++i)
     {
       rd = xg_lr0state_get_reduct (state, i);
-
-      fputs ("\tOn ", out);
-      xg_symset_debug (out, g, &rd->la);
-      fprintf (out, "\t  reduce by production %u\n", rd->prod);
+      if (! ulib_bitset_is_empty (&rd->la))
+        {
+          fputs ("\tOn ", out);
+          xg_symset_debug (out, g, &rd->la);
+          fprintf (out, "\t  reduce by production %u\n", rd->prod);
+        }
     }
+
+  if (state->accept)
+    fputs ("\taccept\n", out);
 }
 
 
@@ -445,7 +466,7 @@ xg_lr0state_debug (FILE *out, const struct xg_grammar *g, const xg_lr0dfa *dfa,
 static int
 lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
 {
-  int no, sts = -1;
+  int ns, nt, sts = -1;
   unsigned int i;
   xg_lr0state *src, *dst;
   const xg_lr0item *it, *end;
@@ -483,10 +504,16 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                   /* Compute the transition on SYM.  */
                   if (ulib_bitset_set (&trans_done, sym) < 0
                       || (dst = xg_lr0state_goto (g, src, sym)) == 0
-                      || (no = xg_lr0dfa_add_state (dfa, dst)) < 0
-                      || (no = xg_lr0dfa_add_trans (dfa, sym, src->id, no)) < 0
-                      || xg_lr0state_add_trans (src, no) < 0)
+                      || (ns = xg_lr0dfa_add_state (dfa, dst)) < 0
+                      || (nt = xg_lr0dfa_add_trans (dfa, sym, src->id, ns)) < 0
+                      || xg_lr0state_add_trans (src, nt) < 0)
                     goto exit;
+
+                  if (sym == XG_EOF)
+                    {
+                      dst = xg_lr0dfa_get_state (dfa, ns);
+                      dst->accept = 1;
+                    }
                 }
             }
           ++it;

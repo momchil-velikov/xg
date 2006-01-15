@@ -74,6 +74,9 @@ struct xg_lr0state
   /* State id.  */
   unsigned int id;
 
+  /* Accepting state flag.  */
+  unsigned int accept : 1;
+
   /* LR(0) items.  */
   ulib_vector items;
 
@@ -111,6 +114,9 @@ xg_lr0item *xg_lr0state_items_back (const xg_lr0state *state);
 /* Add a transition to an LR(0) state.  */
 int xg_lr0state_add_trans (xg_lr0state *state, unsigned int id);
 
+/* Remove a transition from an LR(0) state.  */
+void xg_lr0state_del_trans (xg_lr0state *state, unsigned int idx);
+
 /* Get the number of transitions.  */
 unsigned int xg_lr0state_trans_count (const xg_lr0state *state);
 
@@ -121,6 +127,9 @@ unsigned int xg_lr0state_get_trans (const xg_lr0state *state, unsigned int n);
    exists, return a pointer to the existing reduction, otherwise
    create a new one.  Return null on error.  */
 xg_lr0reduct *xg_lr0state_add_reduct (xg_lr0state *state, unsigned int prod);
+
+/* Delete the N-th reduction from an LR(0) state.  */
+void xg_lr0state_del_reduct (xg_lr0state *state, unsigned int n);
 
 /* Get the number of reductions.  */
 unsigned int xg_lr0state_reduct_count (const xg_lr0state *state);
@@ -183,6 +192,9 @@ xg_lr0trans *xg_lr0dfa_get_trans (const xg_lr0dfa *dfa, unsigned int n);
 
 /* Create reductions for an SLR(1) parser.  */
 int xg_make_slr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
+
+/* Resolve parsing conflicts.  */
+int xg_resolve_conflicts (const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Display a debugging dump of an LR(0) DFA.  */
 void xg_lr0dfa_debug (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);

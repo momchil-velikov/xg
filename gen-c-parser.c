@@ -103,6 +103,15 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
           rd = xg_lr0state_get_reduct (state, 0);
           fprintf (out, "  goto reduce_%u;\n\n\n", rd->prod);
         }
+      else if (m == 0)
+        {
+          /* If there are no reductions, jump to the parse error
+             handling code, unless this is the accepting state.  */
+          if (state->accept)
+            fputs ("  goto accept;\n\n\n", out);
+          else
+            fputs ("  goto parse_error;\n\n\n", out);
+        }
       else
         {
           for (j = 0; j < m; ++j)
@@ -122,12 +131,9 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
         }
     }
 
-  /* Reduce by production 0 is the accepting state.  */
-  fputs ("reduce_0:\n"
-         "  goto accept;\n\n",
-         out);
-
-  /* Emit reduce actions for each production.  */
+  /* Emit reduce actions for each production. Skip "reduce" by
+     production 0 as this constitutes an accept and is handled
+     elsewhere.  */
   n = xg_grammar_prod_count (g);
   for (i = 1; i < n; ++i)
     {

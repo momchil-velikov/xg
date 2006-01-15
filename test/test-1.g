@@ -1,8 +1,8 @@
 %start stmt-list ;
 
-%left '*' '/' '%';
-%left '+' '-';
 %right '=';
+%left '+' '-';
+%left '*' '/' '%';
 
 expr :
         expr/no-commas
