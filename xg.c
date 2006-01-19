@@ -30,43 +30,6 @@
 /* XG message log.  */
 ulib_log *xg_log;
 
-/* Memory functions.  */
-void *
-xg_malloc (size_t sz)
-{
-  void *ptr;
-
-  ptr = malloc (sz);
-  if (ptr == 0 && sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) sz);
-  return ptr;
-}
-
-void *
-xg_calloc (size_t n, size_t sz)
-{
-  void *ptr;
-  
-  ptr = calloc (n, sz);
-  if (ptr == 0 && n * sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) n * sz);
-  return ptr;
-}
-
-void *
-xg_realloc (void *oldptr, size_t sz)
-{
-  void *ptr;
-
-  ptr = realloc (oldptr, sz);
-  if (ptr == 0 && sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) sz);
-  return ptr;
-}
-
 static int
 usage ()
 {

@@ -2,8 +2,9 @@ smk.subproject ('ulib')
 
 smk.env.cc.include (os.path.join (smk.env.top_srcdir, 'ulib'))
 
-xg_srcs = ['xg.c', 'parse.c', 'symtab.c', 'grammar.c', 'first-follow.c',
-           'lr0.c', 'lalr.c', 'conflicts.c', 'gen-c-parser.c', 'random-gen.c']
+xg_srcs = ['xg.c', 'malloc.c', 'parse.c', 'symtab.c', 'grammar.c',
+           'first-follow.c', 'lr0.c', 'lalr.c', 'conflicts.c',
+           'gen-c-parser.c', 'random-gen.c']
 
 xg = smk.make_program ('xg', srcs = xg_srcs, libs = [libulib])
 
