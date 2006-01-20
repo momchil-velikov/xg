@@ -206,7 +206,8 @@ int xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form);
 /* Output to OUT a random sentence from the language, defined by the
    grammar G.  The parameter SIZE indirectly influences the length of
    the generated sentence.  */
-int xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size);
+int xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size,
+                             int names);
 
 
 /* Display a symbol name.  */

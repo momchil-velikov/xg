@@ -46,6 +46,9 @@ const char *xg_output = 0;
 /* Sentence size.  */
 int xg_sentence_size = 10;
 
+/* Output token codes, instead of token names.  */
+int xg_flag_token_codes = 0;
+
 /* Report file name.  */
 const char *xg_report = 0;
 
@@ -168,6 +171,9 @@ static ulib_option options [] =
     .flags = ulib_option_required_arg, .arg = "<number>",
     .help = "\n\t\t\trandom sentence size" },
 
+  { .key = 'c', .name = "codes", .flag = &xg_flag_token_codes, .value = 1,
+    .help = "\t\tgenerate token codes, instead of token names" },
+
   { .key = 'r', .name = "report", .flag = &xg_flag_report, .value = 1,
     .cb = handle_report, .flags = ulib_option_optional_arg, .arg = "<path>",
     .help = "\n\t\t\tproduce a report with details on the parser" },
@@ -245,7 +251,7 @@ main (int argc, const char *argv [])
 
   /* Write the required output.  */
   if (xg_flag_output_type == output_random_sentence)
-    xg_make_random_sentence (out, g, xg_sentence_size);
+    xg_make_random_sentence (out, g, xg_sentence_size, xg_flag_token_codes);
   else if (xg_flag_output_type == output_defines)
     {
     }

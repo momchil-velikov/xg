@@ -85,7 +85,8 @@ expand (ulib_vector *v, const xg_grammar *g, xg_sym s, unsigned int rec)
    grammar G.  The parameter SIZE indirectly influences the length of
    the generated sentence.  */
 int
-xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size)
+xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size,
+                         int codes)
 {
   ulib_vector v;
   xg_sym *syms;
@@ -103,13 +104,19 @@ xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size)
   syms = ulib_vector_front (&v);
   while (len--)
     {
-      if (*syms < XG_TOKEN_LITERAL_MAX)
-        fprintf (out, "%c ", *syms);
+      if (codes)
+        fprintf (out, "%u ", *syms);
       else
         {
-          def = xg_grammar_get_symbol (g, *syms);
-          fprintf (out, "%s ", def->name);
+          if (*syms <= XG_TOKEN_LITERAL_MAX)
+            fprintf (out, "%c ", *syms);
+          else
+            {
+              def = xg_grammar_get_symbol (g, *syms);
+              fprintf (out, "%s ", def->name);
+            }
         }
+
       ++syms;
     }
   fputc ('\n', out);
