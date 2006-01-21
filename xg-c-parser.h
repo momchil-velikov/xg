@@ -118,27 +118,13 @@ struct xg_parse_ctx
 typedef struct xg_parse_ctx xg_parse_ctx;
 
 
-/* Parser inner workings.  */
-#if defined (NDEBUG)
+#ifdef NDEBUG
 
-#define XG__SHIFT                                       \
-  do                                                    \
-    {                                                   \
-      xg__stack_top (&ctx->stk)->value = value;         \
-      if ((token = ctx->get_token (&value)) == -1)      \
-        goto lexer_error;                               \
-    }                                                   \
-  while (0)
-
-#define XG__PUSH(n) xg__stack_push (&ctx->stk, n)
-
-#define XG__REDUCE(PROD, LHS, LEN)                \
-  do                                              \
-    {                                             \
-      xg__stack_pop (&ctx->stk, LEN);             \
-      lhs = LHS;                                  \
-    }                                             \
-  while (0)
+#define XG__TARCE_SHIFT(TOKEN) do {} while (0)
+#define XG__TRACE_NEXT_TOKEN(TOKEN) do {} while (0)
+#define XG__TRACE_PUSH(STATE) do {} while (0)
+#define XG__TRACE_STACK_DUMP() do {} while (0)
+#define XG__TRACE_REDUCE(PROD) do {} while (0)
 
 #else /* ! NDEBUG */
 
@@ -153,25 +139,33 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   ctx->print ("\n");
 }
 
-#define XG__SHIFT                                       \
+#define XG__TRACE_SHIFT(TOKEN)                          \
   do                                                    \
     {                                                   \
       if (ctx->debug)                                   \
-        ctx->print ("Shifting token %u\n", token);      \
-      xg__stack_top (&ctx->stk)->value = value;         \
-      if ((token = ctx->get_token (&value)) == -1)      \
-        goto lexer_error;                               \
-      if (ctx->debug)                                   \
-        ctx->print ("Next token is %u\n", token);       \
+        ctx->print ("Shifting token %u\n", TOKEN);      \
     }                                                   \
   while (0)
 
-#define XG__PUSH(n)                             \
+#define XG__TRACE_NEXT_TOKEN(TOKEN)                     \
+  do                                                    \
+    {                                                   \
+      if (ctx->debug)                                   \
+        ctx->print ("Next token is %u\n", TOKEN);       \
+    }                                                   \
+  while (0)
+
+#define XG__TRACE_PUSH(STATE)                       \
+  do                                                \
+    {                                               \
+      if (ctx->debug)                               \
+        ctx->print ("Entering state %u\n", STATE);  \
+    }                                               \
+  while (0)
+
+#define XG__TRACE_STACK_DUMP()                  \
   do                                            \
     {                                           \
-      if (ctx->debug)                           \
-        ctx->print ("Entering state %u\n", n);  \
-      xg__stack_push (&ctx->stk, n);            \
       if (ctx->debug)                           \
         {                                       \
           ctx->print ("Stack is: ");            \
@@ -180,17 +174,44 @@ xg__stack_dump (const xg_parse_ctx *ctx)
     }                                           \
   while (0)
 
-#define XG__REDUCE(PROD, LHS, LEN)                              \
+#define XG__TRACE_REDUCE(PROD)                                  \
   do                                                            \
     {                                                           \
       if (ctx->debug)                                           \
         ctx->print ("Reducing by production %u\n", PROD);       \
-      xg__stack_pop (&ctx->stk, LEN);                           \
-      lhs = LHS;                                                \
     }                                                           \
   while (0)
 
 #endif /* NDEBUG */
+
+#define XG__SHIFT                                       \
+  do                                                    \
+    {                                                   \
+      XG__TRACE_SHIFT (token);                          \
+      xg__stack_top (&ctx->stk)->value = value;         \
+      if ((token = ctx->get_token (&value)) == -1)      \
+        goto lexer_error;                               \
+      XG__TRACE_NEXT_TOKEN (token);                     \
+    }                                                   \
+  while (0)
+
+#define XG__PUSH(n)                             \
+  do                                            \
+    {                                           \
+      XG__TRACE_PUSH (n);                       \
+      xg__stack_push (&ctx->stk, n);            \
+      XG__TRACE_STACK_DUMP ();                  \
+    }                                           \
+  while (0)
+
+#define XG__REDUCE(PROD, LHS, LEN)              \
+  do                                            \
+    {                                           \
+      XG__TRACE_REDUCE (PROD);                  \
+      xg__stack_pop (&ctx->stk, LEN);           \
+      lhs = LHS;                                \
+    }                                           \
+  while (0)
 
 #define XG__PARSER_FUNCTION_START               \
   /* Current token.  */                         \
