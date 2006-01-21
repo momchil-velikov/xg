@@ -34,9 +34,38 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   const xg_lr0trans *tr;
   const xg_lr0reduct *rd;
   const xg_prod *p;
+  const xg_symdef *def;
 
   /* Include the common parser declarations.  */
   fputs ("#include <xg-c-parser.h>\n\n", out);
+
+  /* Emit symbol names.  */
+  fputs ("#ifndef NDEBUG\n", out);
+  fputs ("static const char *xg__symbol_name [] =\n"
+         "{\n",
+         out);
+  n = xg_grammar_symbol_count (g);
+  for (i = XG_TOKEN_LITERAL_MAX + 1; i < n; ++i)
+    {
+      def = xg_grammar_get_symbol (g, i);
+      fprintf (out, "  \"%s\",\n",  def->name);
+    }
+  fputs ("  0\n};\n\n", out);
+
+  /* Emit prodictions.  */
+  fputs ("static const char *xg__prod [] =\n"
+         "{\n",
+         out);
+  n = xg_grammar_prod_count (g);
+  for (i = 0; i < n; ++i)
+    {
+      p = xg_grammar_get_prod (g, i);
+      fputs ("  \"", out);
+      xg_prod_print (out, g, p);
+      fputs ("\",\n", out);
+    }
+  fputs ("  0\n};\n\n", out);
+  fputs ("#endif /* NDEBUG */\n\n", out);
 
   /* Emit parser function preambule.  */
   fputs ("int\n"

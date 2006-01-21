@@ -176,6 +176,10 @@ int xg_grammar_set_symbol (xg_grammar *, xg_sym, xg_symdef *);
 /* Get the symbol definition for the symbol CODE.  */
 xg_symdef *xg_grammar_get_symbol (const xg_grammar *, xg_sym code);
 
+/* Get symbol count.  The returned value is always bigger than
+   XG_TOKEN_LITERAL_MAX.  */
+int xg_grammar_symbol_count (const xg_grammar *g);
+
 /* Add a production to the grammar.  */
 int xg_grammar_add_prod (xg_grammar *, xg_prod *);
 
@@ -184,6 +188,9 @@ unsigned int xg_grammar_prod_count (const xg_grammar *);
 
 /* Get Nth production.  */
 xg_prod *xg_grammar_get_prod (const xg_grammar *, unsigned int n);
+
+/* Print a production.  */
+void xg_prod_print (FILE *out, const xg_grammar *g, const xg_prod *p);
 
 /* Return true if the symbol SYM is a terminal.  */
 int xg_grammar_is_terminal_sym (const xg_grammar *g, xg_sym sym);

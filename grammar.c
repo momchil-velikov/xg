@@ -278,6 +278,14 @@ xg_grammar_get_symbol (const xg_grammar *g, xg_sym code)
   return (xg_symdef *) ulib_vector_ptr_elt (&g->syms, code);
 }
 
+/* Get symbol count.  The returned value is always bigger than
+   XG_TOKEN_LITERAL_MAX.  */
+int
+xg_grammar_symbol_count (const xg_grammar *g)
+{
+  return ulib_vector_length (&g->syms);
+}
+
 /* Add a production to the grammar.  */
 int
 xg_grammar_add_prod (xg_grammar *g, xg_prod *p)
@@ -466,13 +474,32 @@ xg_symdef_debug (FILE *out, const xg_grammar *g, const xg_symdef *def)
     }
 }
 
+
+/* Print a production.  */
+void
+xg_prod_print (FILE *out, const xg_grammar *g, const xg_prod *p)
+{
+  unsigned int i, n;
+  xg_sym sym;
+  const xg_symdef *def;
+
+  def = xg_grammar_get_symbol (g, p->lhs);
+  fprintf (out, "%s ->", def->name);
+
+  n = xg_prod_length (p);
+  for (i = 0; i < n; ++i)
+    {
+      sym = xg_prod_get_symbol (p, i);
+      fputc (' ', out);
+      xg_symbol_name_debug (out, g, sym);
+    }
+}
+
 /* Display a debugging dump of a production.  */
 void
 xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
 {
-  xg_sym sym;
   xg_symdef *def;
-  unsigned int i, n;
 
   def = xg_grammar_get_symbol (g, p->prec);
   if (def != 0)
@@ -489,16 +516,7 @@ xg_prod_debug (FILE *out, const xg_grammar *g, const xg_prod *p)
   else
     fputs (" [unknown, 0] ", out);
 
-  def = xg_grammar_get_symbol (g, p->lhs);
-  fprintf (out, "%s ->", def->name);
-
-  n = xg_prod_length (p);
-  for (i = 0; i < n; ++i)
-    {
-      sym = xg_prod_get_symbol (p, i);
-      fputc (' ', out);
-      xg_symbol_name_debug (out, g, sym);
-    }
+  xg_prod_print (out, g, p);
   fputc ('\n', out);
 }
 

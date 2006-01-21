@@ -1,5 +1,7 @@
 %start stmt-list ;
 
+%token IDENT ;
+
 %right '=';
 %left '+' '-';
 %left '*' '/' '%';

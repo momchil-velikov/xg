@@ -120,7 +120,7 @@ typedef struct xg_parse_ctx xg_parse_ctx;
 
 #ifdef NDEBUG
 
-#define XG__TARCE_SHIFT(TOKEN) do {} while (0)
+#define XG__TRACE_SHIFT(TOKEN) do {} while (0)
 #define XG__TRACE_NEXT_TOKEN(TOKEN) do {} while (0)
 #define XG__TRACE_PUSH(STATE) do {} while (0)
 #define XG__TRACE_STACK_DUMP() do {} while (0)
@@ -139,20 +139,26 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   ctx->print ("\n");
 }
 
-#define XG__TRACE_SHIFT(TOKEN)                          \
-  do                                                    \
-    {                                                   \
-      if (ctx->debug)                                   \
-        ctx->print ("Shifting token %u\n", TOKEN);      \
-    }                                                   \
+#define XG__TRACE_SHIFT(SYM)                                            \
+  do                                                                    \
+    {                                                                   \
+      if (ctx->debug)                                                   \
+        if (SYM < 256)                                                  \
+          ctx->print ("Shifting '%c'\n", SYM);                          \
+        else                                                            \
+          ctx->print ("Shifting %s\n", xg__symbol_name [SYM - 256]);    \
+    }                                                                   \
   while (0)
 
-#define XG__TRACE_NEXT_TOKEN(TOKEN)                     \
-  do                                                    \
-    {                                                   \
-      if (ctx->debug)                                   \
-        ctx->print ("Next token is %u\n", TOKEN);       \
-    }                                                   \
+#define XG__TRACE_NEXT_TOKEN(TOKEN)                                     \
+  do                                                                    \
+    {                                                                   \
+      if (ctx->debug)                                                   \
+        if (TOKEN < 256)                                                \
+          ctx->print ("Next token is '%c'\n", TOKEN);                   \
+        else                                                            \
+          ctx->print ("Next token is %s\n", xg__symbol_name [TOKEN - 256]); \
+    }                                                                   \
   while (0)
 
 #define XG__TRACE_PUSH(STATE)                       \
@@ -174,12 +180,13 @@ xg__stack_dump (const xg_parse_ctx *ctx)
     }                                           \
   while (0)
 
-#define XG__TRACE_REDUCE(PROD)                                  \
-  do                                                            \
-    {                                                           \
-      if (ctx->debug)                                           \
-        ctx->print ("Reducing by production %u\n", PROD);       \
-    }                                                           \
+#define XG__TRACE_REDUCE(PROD)                          \
+  do                                                    \
+    {                                                   \
+      if (ctx->debug)                                   \
+        ctx->print ("Reducing by production %u: %s\n",  \
+                    PROD, xg__prod [PROD]);             \
+    }                                                   \
   while (0)
 
 #endif /* NDEBUG */
@@ -228,6 +235,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
                                                 \
   if ((token = ctx->get_token (&value)) == -1)  \
     goto lexer_error;                           \
+  XG__TRACE_NEXT_TOKEN (token);                 \
                                                 \
   goto push_0
 
