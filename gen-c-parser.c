@@ -42,30 +42,8 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   fputs ("int\n"
          "xg_parse (xg_parse_ctx *ctx)\n"
          "{\n"
-         "  int token;\n"
-         "  void *value;\n"
-         "\n"
-         "  unsigned int lhs;\n"
-
-         "\n"
-         "#define SHIFT \\\n"
-         "  do \\\n"
-         "    { \\\n"
-         "      xg__stack_top (&ctx->stk)->value = value;   \\\n"
-         "      if ((token = ctx->get_token (&value)) == -1) \\\n"
-         "        goto lexer_error; \\\n"
-         "    } \\\n"
-         "  while (0)"
-         "\n"
-         "#define PUSH(n) xg__stack_push (&ctx->stk, n)\n"
-         "\n"
-         "  if (xg__stack_init (&ctx->stk) < 0)\n"
-         "    return -1;\n"
-         "\n"
-         "  if ((token = ctx->get_token (&value)) == -1)\n"
-         "    goto lexer_error;\n"
-         "  goto push_0;\n"
-         "\n", out);
+         "  XG__PARSER_FUNCTION_START;\n\n",
+         out);
 
   /* Emit parse actions for each state.  */
   n = xg_lr0dfa_state_count (dfa);
@@ -75,9 +53,9 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       state = xg_lr0dfa_get_state (dfa, i);
       fprintf (out,
                "shift_%u:\n"
-               "  SHIFT;\n"
+               "  XG__SHIFT;\n"
                "push_%u:\n"
-               "  PUSH (%u);\n\n",
+               "  XG__PUSH (%u);\n\n",
                i, i, i);
 
       /* Emit shift actions.  */
@@ -140,10 +118,9 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       p = xg_grammar_get_prod (g, i);
       fprintf (out,
                "reduce_%u:\n"
-               "  xg__stack_pop (&ctx->stk, %u);\n"
-               "  lhs = %u;\n"
+               "  XG__REDUCE (%u, %u, %u);\n"
                "  goto next;\n\n",
-               i, xg_prod_length (p), p->lhs);
+               i, i, p->lhs, xg_prod_length (p));
     }
 
   /* Emit non-terminal transitions for each state.  */
@@ -195,13 +172,13 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   fputs ("    }\n\n", out);
 
   fputs ("parse_error:\n"
-         "  return -1;\n\n",
+         "  XG__PARSER_FUNCTION_END (-1);\n\n",
          out);
   fputs ("lexer_error:\n"
-         "  return -1;\n\n",
+         "  XG__PARSER_FUNCTION_END (-1);\n\n",
          out);
   fputs ("accept:\n"
-         "  return 0;\n",
+         "  XG__PARSER_FUNCTION_END (0);\n",
          out);
   fputs ("}\n", out);
 

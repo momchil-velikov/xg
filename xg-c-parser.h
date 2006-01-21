@@ -47,18 +47,27 @@ xg__stack_init (xg__stack *stk)
   return 0;
 }
 
+/* Destroy the parser stack.  */
+static inline void
+xg__stack_destroy (xg__stack *stk)
+{
+  free (stk->base);
+}
+
 /* Grow a stack.  */
 static int
 xg__stack_grow (xg__stack *stk)
 {
-  unsigned int nsz = stk->alloc * 2 + 1;
-  xg__stkent *nw = realloc (stk->base, stk->alloc * sizeof (xg__stkent));
-  if (nw == 0)
+  unsigned int na = stk->alloc * 2 + 1;
+  xg__stkent *np = realloc (stk->base, na * sizeof (xg__stkent));
+  if (np == 0)
     return -1;
 
-  stk->top = nw + (stk->top - stk->base);
-  stk->base = nw;
-  stk->alloc = nsz;
+  stk->top = np + (stk->top - stk->base);
+  stk->base = np;
+  stk->alloc = na;
+
+  return 0;
 }
 
 /* Push a state on the stack.  */
@@ -97,10 +106,117 @@ struct xg_parse_ctx
   /* Scanner function (initialized by user).  */
   int (*get_token) (void **value);
 
+  /* Debug print function.  */
+  void (*print) (const char *fmt, ...);
+
+  /* Enable debugging flag.  */
+  int debug;
+
   /* Parser automaton stack (initialized by the parser function). */
   xg__stack stk;
 };
 typedef struct xg_parse_ctx xg_parse_ctx;
+
+
+/* Parser inner workings.  */
+#if defined (NDEBUG)
+
+#define XG__SHIFT                                       \
+  do                                                    \
+    {                                                   \
+      xg__stack_top (&ctx->stk)->value = value;         \
+      if ((token = ctx->get_token (&value)) == -1)      \
+        goto lexer_error;                               \
+    }                                                   \
+  while (0)
+
+#define XG__PUSH(n) xg__stack_push (&ctx->stk, n)
+
+#define XG__REDUCE(PROD, LHS, LEN)                \
+  do                                              \
+    {                                             \
+      xg__stack_pop (&ctx->stk, LEN);             \
+      lhs = LHS;                                  \
+    }                                             \
+  while (0)
+
+#else /* ! NDEBUG */
+
+/* Print the parsing stack.  */
+static void
+xg__stack_dump (const xg_parse_ctx *ctx)
+{
+  xg__stkent *ent;
+
+  for (ent = ctx->stk.base; ent < ctx->stk.top; ++ent)
+    ctx->print ("%d ", ent->state);
+  ctx->print ("\n");
+}
+
+#define XG__SHIFT                                       \
+  do                                                    \
+    {                                                   \
+      if (ctx->debug)                                   \
+        ctx->print ("Shifting token %u\n", token);      \
+      xg__stack_top (&ctx->stk)->value = value;         \
+      if ((token = ctx->get_token (&value)) == -1)      \
+        goto lexer_error;                               \
+      if (ctx->debug)                                   \
+        ctx->print ("Next token is %u\n", token);       \
+    }                                                   \
+  while (0)
+
+#define XG__PUSH(n)                             \
+  do                                            \
+    {                                           \
+      if (ctx->debug)                           \
+        ctx->print ("Entering state %u\n", n);  \
+      xg__stack_push (&ctx->stk, n);            \
+      if (ctx->debug)                           \
+        {                                       \
+          ctx->print ("Stack is: ");            \
+          xg__stack_dump (ctx);                 \
+        }                                       \
+    }                                           \
+  while (0)
+
+#define XG__REDUCE(PROD, LHS, LEN)                              \
+  do                                                            \
+    {                                                           \
+      if (ctx->debug)                                           \
+        ctx->print ("Reducing by production %u\n", PROD);       \
+      xg__stack_pop (&ctx->stk, LEN);                           \
+      lhs = LHS;                                                \
+    }                                                           \
+  while (0)
+
+#endif /* NDEBUG */
+
+#define XG__PARSER_FUNCTION_START               \
+  /* Current token.  */                         \
+  int token;                                    \
+                                                \
+  /* Token or production semantic value.  */    \
+  void *value;                                  \
+                                                \
+  /* Reduced symbol.  */                        \
+  unsigned int lhs;                             \
+                                                \
+  if (xg__stack_init (&ctx->stk) < 0)           \
+    return -1;                                  \
+                                                \
+  if ((token = ctx->get_token (&value)) == -1)  \
+    goto lexer_error;                           \
+                                                \
+  goto push_0
+
+#define XG__PARSER_FUNCTION_END(N)               \
+  do                                             \
+    {                                            \
+      xg__stack_destroy (&ctx->stk);             \
+      return N;                                  \
+    }                                            \
+  while (0)
 
 #endif /* xg__c_parser_h 1 */
 
