@@ -1,6 +1,6 @@
 /* ISO/IEC 9988:1999 grammar (ISO C) */
 
-%token ID INT_CST STRING_CST SIZEOF ;
+%token ID TYPEDEF_NAME INT_CST STRING_CST SIZEOF ;
 %token CHAR INT FLOAT  ;
 
 
@@ -65,7 +65,7 @@ argument_expr_list :
     ;
 
 
-/*  6.5.3  Unary operators.  */
+/* 6.5.3  Unary operators.  */
 
 unary_expr :
         postfix_expr
@@ -98,7 +98,7 @@ multiplicative_expr :
     ;
 
 
-/*  6.5.6  Additive operators.  */
+/* 6.5.6  Additive operators.  */
 
 additive_expr :
         multiplicative_expr
@@ -116,7 +116,7 @@ shift_expr :
     ;
 
 
-/*  6.5.8  Relational operators.  */
+/* 6.5.8  Relational operators.  */
 
 relational_expr :
         shift_expr
@@ -215,7 +215,7 @@ expression :
 constant_expr : conditional_expr ;
 
 
-/*  6.7  Declarations.  */
+/* 6.7  Declarations.  */
 
 declaration :
         declaration_specifiers init_declarator_list_opt ';' ;
@@ -270,11 +270,11 @@ type_specifier :
     |   IMAGINARY
     |   struct_or_union_specifier
     |   enum_specifier
-    |   typedef_name
+    |   TYPEDEF_NAME
     ;
 
 
-/*  6.7.2.1  Structure and union specifiers.  */
+/* 6.7.2.1  Structure and union specifiers.  */
 
 struct_or_union_specifier :
         struct_or_union identifier_opt '{' struct_declaration_list '}'
@@ -331,7 +331,7 @@ enumerator :
     ;
 
 
-/*  6.7.3  Type qualifiers.  */
+/* 6.7.3  Type qualifiers.  */
 
 type_qualifier :
         CONST
@@ -417,17 +417,18 @@ direct_abstract_declarator_opt : /* empty */ | direct_abstract_declarator ;
 
 direct_abstract_declarator :
         '(' abstract_declarator ')'
+    |   '(' parameter_type_list_opt ')'
     |   direct_abstract_declarator_opt '[' assignment_expr_opt ']'
     |   direct_abstract_declarator_opt '[' '*' ']'
-    |   direct_abstract_declarator_opt '(' parameter_type_list_opt ')'
+    |   direct_abstract_declarator '(' parameter_type_list_opt ')'
     ;
 
-/*  6.7.7  Type definitions.  */
+/* 6.7.7  Type definitions.  */
 
-typedef_name : ID ;
+/* typedef_name : ID ; */
 
 
-/*  6.7.8  Initialization.  */
+/* 6.7.8  Initialization.  */
 
 initializer :
         assignment_expr
@@ -455,7 +456,7 @@ designator :
     ;
 
 
-/*  6.8  Statements and blocks.  */
+/* 6.8  Statements and blocks.  */
 
 statement :
         labeled_statement

@@ -123,6 +123,9 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
         }
       else
         {
+          fputs ("  switch (token)\n"
+                 "    {\n",
+                 out);
           for (j = 0; j < m; ++j)
             {
               rd = xg_lr0state_get_reduct (state, j);
@@ -131,12 +134,14 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
               for (sym = 0; sym < k; ++sym)
                 if (ulib_bitset_is_set (&rd->la, sym))
                   fprintf (out,
-                           "  if (token == %u)\n"
-                           "    goto reduce_%u;\n",
+                           "    case %u:\n"
+                           "      goto reduce_%u;\n",
                            sym, rd->prod);
             }
-
-          fputs ("  goto parse_error;\n\n\n", out);
+          fputs ("    default:\n"
+                 "      goto parse_error;\n"
+                 "    }\n\n\n",
+                 out);
         }
     }
 
