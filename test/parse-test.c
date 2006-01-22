@@ -58,10 +58,11 @@ extern int xg_parse (xg_parse_ctx *ctx);
 int
 main ()
 {
-#ifdef FOR_BISON
+#if defined (FOR_BISON)
+#if !defined (YYDEBUG) || YYDEBUG
   extern int yydebug;
-
   yydebug = 0;
+#endif
 #else
   xg_parse_ctx ctx = { get_token, print, 0, };
 #endif

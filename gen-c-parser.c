@@ -20,19 +20,89 @@
  */
 
 #include "grammar.h"
+#include <ulib/vector.h>
 #include "lr0.h"
 #include <stdio.h>
+#include <assert.h>
+
+/* Generation of switch statements for reduce actions and non-terminal
+   transitions creates a default label for the most frequent
+   destination (production number or a parsing state.  This structure
+   is used to record destination frequencies.  */
+struct freq
+{
+  unsigned int dst;
+  unsigned int freq;
+};
+
+/* Increment the frequency for DST.  */
+static int
+increment_freq (ulib_vector *vec, unsigned int dst)
+{
+  unsigned int n;
+  struct freq *fq;
+
+  n = ulib_vector_length (vec);
+  fq = ulib_vector_front (vec);
+  while (n--)
+    {
+      if (fq->dst == dst)
+        {
+          ++fq->freq;
+          return 0;
+        }
+      ++fq;
+    }
+
+  if (ulib_vector_resize (vec, 1) < 0)
+    return -1;
+
+  fq = ulib_vector_back (vec);
+
+  fq [-1].dst = dst;
+  fq [-1].freq = 1;
+
+  return 0;
+}
+
+/* Find the destination with maximum frequency.  */
+static unsigned int
+max_freq (ulib_vector *vec)
+{
+  unsigned int n, mx, dst;
+  struct freq *fq;
+
+  mx = 0;
+  n = ulib_vector_length (vec);
+  fq = ulib_vector_front (vec);
+  while (n--)
+    {
+      if (fq->freq > mx)
+        {
+          mx = fq->freq;
+          dst = fq->dst;
+        }
+      ++fq;
+    }
+ 
+  assert (mx > 0);
+  return dst;
+}
 
 int
 xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 {
   xg_sym sym, k;
-  unsigned int i, j, n, m;
+  unsigned int i, j, n, m, dst;
   const xg_lr0state *state;
   const xg_lr0trans *tr;
   const xg_lr0reduct *rd;
   const xg_prod *p;
   const xg_symdef *def;
+  ulib_vector casevec;
+
+  (void) ulib_vector_init (&casevec,
+                           ULIB_ELT_SIZE, sizeof (struct freq), 0);
 
   /* Include the common parser declarations.  */
   fputs ("#include <xg-c-parser.h>\n\n", out);
@@ -85,11 +155,14 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
                "  XG__PUSH (%u);\n\n",
                i, i, i);
 
-      /* Emit shift actions.  */
-      m = xg_lr0state_trans_count (state);
+      /* There's a single switch statement for shift and reduce
+         actions.  */
       fputs ("  switch (token)\n"
              "    {\n",
              out);
+
+      /* Emit shift actions.  */
+      m = xg_lr0state_trans_count (state);
       for (j = 0; j < m; ++j)
         {
           tr = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, j));
@@ -99,37 +172,41 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
                      "      goto shift_%u;\n",
                      tr->sym, tr->dst);
         }
-      fputs ("    }\n\n", out);
 
       /* Emit reduce actions.  */
       m = xg_lr0state_reduct_count (state);
-      if (m == 1)
+      
+      if (m > 1)
         {
-          /* If there's only one reduction, jump straight to the
-             reduction code, without checking lookaheads.  The
-             eventual error will be detected later, when we have to
-             shift the errorneous token.  */
-          rd = xg_lr0state_get_reduct (state, 0);
-          fprintf (out, "  goto reduce_%u;\n\n\n", rd->prod);
-        }
-      else if (m == 0)
-        {
-          /* If there are no reductions, jump to the parse error
-             handling code, unless this is the accepting state.  */
-          if (state->accept)
-            fputs ("  goto accept;\n\n\n", out);
-          else
-            fputs ("  goto parse_error;\n\n\n", out);
-        }
-      else
-        {
-          fputs ("  switch (token)\n"
-                 "    {\n",
-                 out);
+          /* Compute the frequency of each reduction.  */
+          ulib_vector_set_size (&casevec, 0);
           for (j = 0; j < m; ++j)
             {
               rd = xg_lr0state_get_reduct (state, j);
             
+              k = ulib_bitset_max (&rd->la);
+              for (sym = 0; sym < k; ++sym)
+                if (ulib_bitset_is_set (&rd->la, sym))
+                  {
+                    if (increment_freq (&casevec, rd->prod) < 0)
+                      goto error;
+                  }
+            }
+          
+          /* Emit reduction cases.  */
+          dst = max_freq (&casevec);
+          fprintf (out,
+                   "    default:\n"
+                   "      goto reduce_%u;\n",
+                   dst);
+
+          for (j = 0; j < m; ++j)
+            {
+              rd = xg_lr0state_get_reduct (state, j);
+
+              if (rd->prod == dst)
+                continue;
+
               k = ulib_bitset_max (&rd->la);
               for (sym = 0; sym < k; ++sym)
                 if (ulib_bitset_is_set (&rd->la, sym))
@@ -138,11 +215,34 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
                            "      goto reduce_%u;\n",
                            sym, rd->prod);
             }
-          fputs ("    default:\n"
-                 "      goto parse_error;\n"
-                 "    }\n\n\n",
-                 out);
         }
+      else if (m == 1)
+        {
+          /* If there's only one reduction, jump straight to the
+             reduction code, without checking lookaheads.  The
+             eventual error will be detected later, when we have to
+             shift the errorneous token.  */
+          rd = xg_lr0state_get_reduct (state, 0);
+          fprintf (out,
+                   "    default:\n"
+                   "      goto reduce_%u;\n",
+                   rd->prod);
+        }
+      else /* m == 0 */
+        {
+          /* If there are no reductions, jump to the parse error
+             handling code, unless this is the accepting state.  */
+          if (state->accept)
+            fputs ("    default:\n"
+                   "      goto accept;\n",
+                   out);
+          else
+            fputs ("    default:\n"
+                   "      goto parse_error;\n",
+                   out);
+        }
+
+      fputs ("    }\n\n\n", out);
     }
 
   /* Emit reduce actions for each production. Skip "reduce" by
@@ -166,8 +266,6 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   m = xg_lr0dfa_trans_count (dfa);
   for (sym = XG_TOKEN_LITERAL_MAX + 1; sym < k; ++sym)
     {
-      unsigned int default_dst = ~0U;
-
       if (xg_grammar_is_terminal_sym (g, sym))
         continue;
 
@@ -175,25 +273,39 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       fputs ("  switch (state)\n"
              "    {\n",
              out);
+
+      /* Compute transition frequencies.  */
+      ulib_vector_set_size (&casevec, 0);
       for (j = 0; j < m; ++j)
         {
           tr = xg_lr0dfa_get_trans (dfa, j);
           if (tr->sym == sym)
-            {
-              if (default_dst == ~0U)
-                default_dst = tr->dst;
-              else if (tr->dst != default_dst)
-                fprintf (out,
-                         "    case %u:\n"
-                         "      goto push_%u;\n",
-                         tr->src, tr->dst);
-            }
+            if (increment_freq (&casevec, tr->dst) < 0)
+              goto error;
         }
-      if (default_dst != ~0U)
-        fprintf (out,
-                 "    default:\n"
-                 "      goto push_%u;\n",
-                 default_dst);
+
+      if (ulib_vector_length (&casevec) != 0)
+        {
+          /* Emit transition cases.  */
+          dst = max_freq (&casevec);
+          for (j = 0; j < m; ++j)
+            {
+              tr = xg_lr0dfa_get_trans (dfa, j);
+              if (tr->sym == sym)
+                {
+                  if (tr->dst != dst)
+                    fprintf (out,
+                             "    case %u:\n"
+                             "      goto push_%u;\n",
+                             tr->src, tr->dst);
+                }
+            }
+
+          fprintf (out,
+                   "    default:\n"
+                   "      goto push_%u;\n",
+                   dst);
+        }
       fputs ("    }\n\n", out);
     }
 
@@ -208,7 +320,12 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
          out);
   fputs ("}\n", out);
 
+  ulib_vector_destroy (&casevec);
   return 0;
+
+error:
+  ulib_vector_destroy (&casevec);
+  return -1;
 }
 
 /*
