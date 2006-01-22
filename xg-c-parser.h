@@ -35,11 +35,13 @@ struct xg__stack
 };
 typedef struct xg__stack xg__stack;
 
+#define XG__INITIAL_STACK_SIZE 200
+
 /* Initialize the parser stack.  */
 static inline int
 xg__stack_init (xg__stack *stk)
 {
-  stk->alloc = 200;
+  stk->alloc = XG__INITIAL_STACK_SIZE;
   stk->base = malloc (stk->alloc * sizeof (xg__stkent));
   if (stk->base == 0)
     return -1;
@@ -98,7 +100,6 @@ xg__stack_top (xg__stack *stk)
 {
   return stk->top - 1;
 }
-
 
 /* Parser context struct.  */
 struct xg_parse_ctx
@@ -111,11 +112,21 @@ struct xg_parse_ctx
 
   /* Enable debugging flag.  */
   int debug;
-
-  /* Parser automaton stack (initialized by the parser function). */
-  xg__stack stk;
 };
 typedef struct xg_parse_ctx xg_parse_ctx;
+
+#ifndef NDEBUG
+/* Print the parsing stack.  */
+static void
+xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
+{
+  xg__stkent *ent;
+
+  for (ent = stk->base; ent < stk->top; ++ent)
+    ctx->print ("%d ", ent->state);
+  ctx->print ("\n");
+}
+#endif
 
 
 #ifdef NDEBUG
@@ -127,17 +138,6 @@ typedef struct xg_parse_ctx xg_parse_ctx;
 #define XG__TRACE_REDUCE(PROD) do {} while (0)
 
 #else /* ! NDEBUG */
-
-/* Print the parsing stack.  */
-static void
-xg__stack_dump (const xg_parse_ctx *ctx)
-{
-  xg__stkent *ent;
-
-  for (ent = ctx->stk.base; ent < ctx->stk.top; ++ent)
-    ctx->print ("%d ", ent->state);
-  ctx->print ("\n");
-}
 
 #define XG__TRACE_SHIFT(SYM)                                            \
   do                                                                    \
@@ -177,7 +177,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
       if (ctx->debug)                           \
         {                                       \
           ctx->print ("Stack is: ");            \
-          xg__stack_dump (ctx);                 \
+          xg__stack_dump (ctx, &stk);            \
         }                                       \
     }                                           \
   while (0)
@@ -197,7 +197,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   do                                                    \
     {                                                   \
       XG__TRACE_SHIFT (token);                          \
-      xg__stack_top (&ctx->stk)->value = value;         \
+      xg__stack_top (&stk)->value = value;              \
       token = ctx->get_token (&value);                  \
       XG__TRACE_NEXT_TOKEN (token);                     \
     }                                                   \
@@ -207,7 +207,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   do                                            \
     {                                           \
       XG__TRACE_PUSH (n);                       \
-      xg__stack_push (&ctx->stk, n);            \
+      xg__stack_push (&stk, n);                 \
       XG__TRACE_STACK_DUMP ();                  \
     }                                           \
   while (0)
@@ -216,7 +216,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   do                                            \
     {                                           \
       XG__TRACE_REDUCE (PROD);                  \
-      xg__stack_pop (&ctx->stk, LEN);           \
+      xg__stack_pop (&stk, LEN);                \
       lhs = LHS;                                \
     }                                           \
   while (0)
@@ -231,7 +231,10 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   /* Reduced symbol.  */                        \
   unsigned int lhs;                             \
                                                 \
-  if (xg__stack_init (&ctx->stk) < 0)           \
+  /* Parse automaton stack.  */                 \
+  xg__stack stk;                                \
+                                                \
+  if (xg__stack_init (&stk) < 0)                \
     return -1;                                  \
                                                 \
   token = ctx->get_token (&value);              \
@@ -242,7 +245,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
 #define XG__PARSER_FUNCTION_END(N)               \
   do                                             \
     {                                            \
-      xg__stack_destroy (&ctx->stk);             \
+      xg__stack_destroy (&stk);                  \
       return N;                                  \
     }                                            \
   while (0)

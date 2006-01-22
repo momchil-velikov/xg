@@ -158,7 +158,7 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 
   /* Emit non-terminal transitions for each state.  */
   fputs ("next:\n"
-         "  switch (xg__stack_top (&ctx->stk)->state)\n"
+         "  switch (xg__stack_top (&stk)->state)\n"
          "    {\n",
          out);
   n = xg_lr0dfa_state_count (dfa);
