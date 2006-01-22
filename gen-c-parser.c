@@ -52,7 +52,7 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
     }
   fputs ("  0\n};\n\n", out);
 
-  /* Emit prodictions.  */
+  /* Emit productions.  */
   fputs ("static const char *xg__prod [] =\n"
          "{\n",
          out);

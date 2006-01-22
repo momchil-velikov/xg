@@ -1,14 +1,20 @@
+#ifndef FOR_BISON
 #include <xg-c-parser.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
 
-static int
-get_token (void **value)
+#ifdef FOR_BISON
+int yylex ()
+#else
+static int get_token (void **value)
+#endif
 {
   int ch;
-  static char buf [32];
   char *p;
+  int val;
 
   do
     {
@@ -19,18 +25,16 @@ get_token (void **value)
   if (ch == EOF)
     return 0;
 
-  p = buf;
+  val = 0;
   do
     {
-      *p++ = ch;
+      val = val * 10 + (ch - '0');
       ch = getc (stdin);
     }
   while (isdigit (ch));
 
   ungetc (ch, stdin);
-  *p++ = '\0';
-
-  return strtol (buf, 0, 0);
+  return val;
 }
 
 static void
@@ -43,14 +47,26 @@ print (const char *fmt, ...)
   va_end (ap);
 }
 
+#ifdef FOR_BISON
+extern int yyparse ();
+#define PARSE(CTX) yyparse ()
+#else
 extern int xg_parse (xg_parse_ctx *ctx);
+#define PARSE(CTX) xg_parse (CTX)
+#endif
 
 int
 main ()
 {
-  xg_parse_ctx ctx = { get_token, print, 1, };
+#ifdef FOR_BISON
+  extern int yydebug;
 
-  if (xg_parse (&ctx) == 0)
+  yydebug = 0;
+#else
+  xg_parse_ctx ctx = { get_token, print, 0, };
+#endif
+
+  if (PARSE (&ctx) == 0)
     puts ("success");
   else
     puts ("error");

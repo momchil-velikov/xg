@@ -315,6 +315,30 @@ getlex (parse_ctx *ctx)
    symbol: word | token-literal
 */
 
+/* Create a symbol definition.  */
+static xg_symdef *
+create_special_symbol (const char *_name)
+{
+  unsigned int n;
+  char *name;
+  xg_symdef *def;
+
+  n = strlen (_name) + 1;
+  if ((name = malloc (n)) != 0)
+    {
+      memcpy (name, _name, n);
+      if ((def = xg_symdef_new (name)) != 0)
+        {
+          def->terminal = xg_non_terminal;
+          return def;
+        }
+      free (name);
+    }
+ 
+  ulib_log_printf (xg_log, "ERROR: Cannot create a special symbol");
+  return 0;
+}
+
 /* Find or create a symbol definition for the token literal CH.  */
 static xg_symdef *
 find_or_create_symbol_ch (parse_ctx *ctx, xg_sym ch)
@@ -693,8 +717,7 @@ xg_grammar_read (const char *name)
 {
   int sts = -1;
   parse_ctx ctx;
-  char *start_name;
-  xg_symdef *start_sym;
+  xg_symdef *sym;
   xg_prod *start;
 
   /* Initialize the parser context.  */
@@ -712,14 +735,21 @@ xg_grammar_read (const char *name)
           /* Create the grammar object.  */
           if ((ctx.gram = xg_grammar_new ()) != 0)
             {
-              /* Create the start production and add it to the
-                 grammar.  Production details will be filled
-                 later.  */
-              if ((start = xg_prod_new (0)) != 0
-                  && xg_grammar_add_prod (ctx.gram, start) == 0)
+              /* Create the special symbols.  */
+              if ((sym = create_special_symbol ("<reserved>")) != 0
+                  && xg_grammar_add_symbol (ctx.gram, sym) == 0
+                  && (sym = create_special_symbol ("<error>")) != 0
+                  && xg_grammar_add_symbol (ctx.gram, sym) == 0)
                 {
-                  /* Parse the grammar description.  */
-                  sts = parse_decls (&ctx);
+                  /* Create the start production and add it to the
+                     grammar.  Production details will be filled
+                     later.  */
+                  if ((start = xg_prod_new (0)) != 0
+                      && xg_grammar_add_prod (ctx.gram, start) == 0)
+                    {
+                      /* Parse the grammar description.  */
+                      sts = parse_decls (&ctx);
+                    }
                 }
               else
                 xg_grammar_del (ctx.gram);
@@ -738,14 +768,10 @@ xg_grammar_read (const char *name)
     goto error;
 
   /* Create the augmented grammar start symbol.  */
-  if ((start_name = malloc (sizeof ("<start>"))) == 0)
+  if ((sym = create_special_symbol ("<start>")) == 0)
     goto error;
-
-  strcpy (start_name, "<start>");
-  if ((start_sym = xg_symdef_new (start_name)) == 0)
-    goto error_name;
-  start_sym->terminal = xg_non_terminal;
-  if (xg_grammar_add_symbol (ctx.gram, start_sym) < 0)
+  sym->terminal = xg_non_terminal;
+  if (xg_grammar_add_symbol (ctx.gram, sym) < 0)
     goto error;
 
   /* Fill the start production details.  */
@@ -762,21 +788,19 @@ xg_grammar_read (const char *name)
 
   /* Create the grammar augmentation.  */
   start = xg_grammar_get_prod (ctx.gram, 0);
-  start->lhs = start_sym->code;
+  start->lhs = sym->code;
   if (xg_prod_add (start, ctx.gram->start) < 0
       || xg_prod_add (start, XG_EOF) < 0
-      || xg_symdef_add_prod (start_sym, 0) < 0)
+      || xg_symdef_add_prod (sym, 0) < 0)
     goto error;
 
-  ctx.gram->start = start_sym->code;
+  ctx.gram->start = sym->code;
   
   /* Set precedence and associativity of productions.  */
   finish_productions (ctx.gram);
 
   return ctx.gram;
 
-error_name:
-  free (start_name);
 error:
   xg_grammar_del (ctx.gram);
   ulib_gcrun ();

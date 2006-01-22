@@ -39,7 +39,7 @@ typedef struct xg__stack xg__stack;
 static inline int
 xg__stack_init (xg__stack *stk)
 {
-  stk->alloc = 10;
+  stk->alloc = 200;
   stk->base = malloc (stk->alloc * sizeof (xg__stkent));
   if (stk->base == 0)
     return -1;

@@ -1,10 +1,11 @@
-%start stmt-list ;
-
 %token IDENT ;
 
 %right '=';
 %left '+' '-';
 %left '*' '/' '%';
+
+%start stmt-list ;
+
 
 expr :
         expr/no-commas
