@@ -26,8 +26,6 @@
 int
 xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 {
-  int have_case;
-  int last_dst;
   xg_sym sym, k;
   unsigned int i, j, n, m;
   const xg_lr0state *state;
@@ -151,59 +149,45 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
       p = xg_grammar_get_prod (g, i);
       fprintf (out,
                "reduce_%u:\n"
-               "  XG__REDUCE (%u, %u, %u);\n"
-               "  goto next;\n\n",
-               i, i, p->lhs, xg_prod_length (p));
+               "  XG__REDUCE (%u, %u);\n"
+               "  goto symbol_%u;\n\n",
+               i, i, xg_prod_length (p), p->lhs);
     }
 
-  /* Emit non-terminal transitions for each state.  */
-  fputs ("next:\n"
-         "  switch (xg__stack_top (&stk)->state)\n"
-         "    {\n",
-         out);
-  n = xg_lr0dfa_state_count (dfa);
-  for (i = 0; i < n; ++i)
+  /* Emit non-terminal transitions code.  For each non-terminal
+     symbol, jump to the appropriate destination state, depending on
+     the current top of the stack state.  */
+  k = xg_grammar_symbol_count (g);
+  m = xg_lr0dfa_trans_count (dfa);
+  for (sym = XG_TOKEN_LITERAL_MAX + 1; sym < k; ++sym)
     {
-      state = xg_lr0dfa_get_state (dfa, i);
-      have_case = 0;
-      last_dst = -1;
-      sym = -1;
+      if (xg_grammar_is_terminal_sym (g, sym))
+        continue;
 
-      m = xg_lr0state_trans_count (state);
+      fprintf (out, "symbol_%u:\n", sym);
+      fputs ("  switch (state)\n"
+             "    {\n",
+             out);
       for (j = 0; j < m; ++j)
         {
-          tr = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, j));
-          if (! xg_grammar_is_terminal_sym (g, tr->sym))
+          tr = xg_lr0dfa_get_trans (dfa, j);
+          if (tr->sym == sym)
             {
-              if (last_dst != -1)
-                {
-                  if (!have_case)
-                    {
-                      fprintf (out, "    case %u:\n", i);
-                      have_case = 1;
-                    }
-
-                  fprintf (out,
-                           "      if (lhs == %u)\n"
-                           "        goto push_%u;\n",
-                           sym, last_dst);
-                }
-              
-              last_dst = tr->dst;
-              sym = tr->sym;
+              fprintf (out,
+                       "    case %u:\n"
+                       "      goto push_%u;\n",
+                       tr->src, tr->dst);
             }
         }
-
-      if (last_dst != -1)
-        {
-          if (!have_case)
-            fprintf (out, "    case %u:\n", i);
-          
-          fprintf (out, "      goto push_%u;\n\n", last_dst);
-        }
+      fputs ("    default:\n"
+             "      goto internal_error;\n",
+             out);
+      fputs ("    }\n\n", out);
     }
-  fputs ("    }\n\n", out);
 
+  fputs ("internal_error:\n"
+         "  XG__PARSER_FUNCTION_END (-1);\n\n",
+         out);
   fputs ("parse_error:\n"
          "  XG__PARSER_FUNCTION_END (-1);\n\n",
          out);

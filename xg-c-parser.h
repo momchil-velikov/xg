@@ -206,18 +206,19 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
 #define XG__PUSH(n)                             \
   do                                            \
     {                                           \
-      XG__TRACE_PUSH (n);                       \
-      xg__stack_push (&stk, n);                 \
+      state = n;                                \
+      XG__TRACE_PUSH (state);                   \
+      xg__stack_push (&stk, state);             \
       XG__TRACE_STACK_DUMP ();                  \
     }                                           \
   while (0)
 
-#define XG__REDUCE(PROD, LHS, LEN)              \
+#define XG__REDUCE(PROD, LEN)                   \
   do                                            \
     {                                           \
       XG__TRACE_REDUCE (PROD);                  \
       xg__stack_pop (&stk, LEN);                \
-      lhs = LHS;                                \
+      state = xg__stack_top (&stk)->state;      \
     }                                           \
   while (0)
 
@@ -228,8 +229,8 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
   /* Token or production semantic value.  */    \
   void *value;                                  \
                                                 \
-  /* Reduced symbol.  */                        \
-  unsigned int lhs;                             \
+  /* Current state.  */                         \
+  unsigned int state;                           \
                                                 \
   /* Parse automaton stack.  */                 \
   xg__stack stk;                                \
