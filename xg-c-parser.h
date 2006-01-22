@@ -154,7 +154,9 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   do                                                                    \
     {                                                                   \
       if (ctx->debug)                                                   \
-        if (TOKEN < 256)                                                \
+        if (TOKEN == -1)                                                \
+          ctx->print ("Next token is <lexer-error>\n");                 \
+        else if (TOKEN < 256)                                           \
           ctx->print ("Next token is '%c'\n", TOKEN);                   \
         else                                                            \
           ctx->print ("Next token is %s\n", xg__symbol_name [TOKEN - 256]); \
@@ -196,8 +198,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
     {                                                   \
       XG__TRACE_SHIFT (token);                          \
       xg__stack_top (&ctx->stk)->value = value;         \
-      if ((token = ctx->get_token (&value)) == -1)      \
-        goto lexer_error;                               \
+      token = ctx->get_token (&value);                  \
       XG__TRACE_NEXT_TOKEN (token);                     \
     }                                                   \
   while (0)
@@ -233,8 +234,7 @@ xg__stack_dump (const xg_parse_ctx *ctx)
   if (xg__stack_init (&ctx->stk) < 0)           \
     return -1;                                  \
                                                 \
-  if ((token = ctx->get_token (&value)) == -1)  \
-    goto lexer_error;                           \
+  token = ctx->get_token (&value);              \
   XG__TRACE_NEXT_TOKEN (token);                 \
                                                 \
   goto push_0

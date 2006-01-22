@@ -207,9 +207,6 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   fputs ("parse_error:\n"
          "  XG__PARSER_FUNCTION_END (-1);\n\n",
          out);
-  fputs ("lexer_error:\n"
-         "  XG__PARSER_FUNCTION_END (-1);\n\n",
-         out);
   fputs ("accept:\n"
          "  XG__PARSER_FUNCTION_END (0);\n",
          out);
