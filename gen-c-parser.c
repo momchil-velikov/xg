@@ -89,15 +89,19 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
 
       /* Emit shift actions.  */
       m = xg_lr0state_trans_count (state);
+      fputs ("  switch (token)\n"
+             "    {\n",
+             out);
       for (j = 0; j < m; ++j)
         {
           tr = xg_lr0dfa_get_trans (dfa, xg_lr0state_get_trans (state, j));
           if (xg_grammar_is_terminal_sym (g, tr->sym))
             fprintf (out,
-                     "  if (token == %u)\n"
-                     "    goto shift_%u;\n",
+                     "    case %u:\n"
+                     "      goto shift_%u;\n",
                      tr->sym, tr->dst);
         }
+      fputs ("    }\n\n", out);
 
       /* Emit reduce actions.  */
       m = xg_lr0state_reduct_count (state);
