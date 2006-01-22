@@ -329,7 +329,7 @@ create_special_symbol (const char *_name)
       memcpy (name, _name, n);
       if ((def = xg_symdef_new (name)) != 0)
         {
-          def->terminal = xg_non_terminal;
+          def->terminal = xg_explicit_terminal;
           return def;
         }
       free (name);

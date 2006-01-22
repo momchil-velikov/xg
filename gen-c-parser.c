@@ -166,6 +166,8 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   m = xg_lr0dfa_trans_count (dfa);
   for (sym = XG_TOKEN_LITERAL_MAX + 1; sym < k; ++sym)
     {
+      unsigned int default_dst = ~0U;
+
       if (xg_grammar_is_terminal_sym (g, sym))
         continue;
 
@@ -178,15 +180,20 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
           tr = xg_lr0dfa_get_trans (dfa, j);
           if (tr->sym == sym)
             {
-              fprintf (out,
-                       "    case %u:\n"
-                       "      goto push_%u;\n",
-                       tr->src, tr->dst);
+              if (default_dst == ~0U)
+                default_dst = tr->dst;
+              else if (tr->dst != default_dst)
+                fprintf (out,
+                         "    case %u:\n"
+                         "      goto push_%u;\n",
+                         tr->src, tr->dst);
             }
         }
-      fputs ("    default:\n"
-             "      goto internal_error;\n",
-             out);
+      if (default_dst != ~0U)
+        fprintf (out,
+                 "    default:\n"
+                 "      goto push_%u;\n",
+                 default_dst);
       fputs ("    }\n\n", out);
     }
 
