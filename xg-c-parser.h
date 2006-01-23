@@ -72,18 +72,22 @@ xg__stack_grow (xg__stack *stk)
   return 0;
 }
 
-/* Push a state on the stack.  */
+/* Ensure there's enough space in the stack for at least one push.  */
 static inline int
+xg__stack_ensure (xg__stack *stk)
+{
+  return (stk->top - stk->base < stk->alloc) ? 0 : xg__stack_grow (stk);
+}
+
+/* Push a state on the stack.  */
+static inline void
 xg__stack_push (xg__stack *stk, unsigned int state)
 {
-  if (stk->top - stk->base == stk->alloc && xg__stack_grow (stk) < 0)
-    return -1;
+  assert (stk->top - stk->base < stk->alloc);
 
   stk->top->state = state;
   stk->top->value = 0;
   ++stk->top;
-
-  return 0;
 }
 
 /* Pop N entries from the stack.  */
@@ -193,14 +197,16 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
 
 #endif /* NDEBUG */
 
-#define XG__SHIFT                                       \
-  do                                                    \
-    {                                                   \
-      XG__TRACE_SHIFT (token);                          \
-      xg__stack_top (&stk)->value = value;              \
-      token = ctx->get_token (&value);                  \
-      XG__TRACE_NEXT_TOKEN (token);                     \
-    }                                                   \
+#define XG__SHIFT                               \
+  do                                            \
+    {                                           \
+      XG__TRACE_SHIFT (token);                  \
+      xg__stack_top (&stk)->value = value;      \
+      token = ctx->get_token (&value);          \
+      XG__TRACE_NEXT_TOKEN (token);             \
+      if (xg__stack_ensure (&stk) < 0)          \
+        goto internal_error;                    \
+    }                                           \
   while (0)
 
 #define XG__PUSH(n)                             \
