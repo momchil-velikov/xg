@@ -25,7 +25,7 @@ typedef struct xg__stkent xg__stkent;
 struct xg__stack
 {
   /* Allocated size.  */
-  unsigned int alloc;
+  int alloc;
 
   /* Stack entries.  */
   xg__stkent *base;
@@ -94,7 +94,7 @@ xg__stack_push (xg__stack *stk, unsigned int state)
 static inline void
 xg__stack_pop (xg__stack *stk, unsigned int n)
 {
-  assert (n < stk->top - stk->base);
+  assert ((int) n < stk->top - stk->base);
   stk->top -= n;
 }
 
@@ -147,10 +147,12 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
   do                                                                    \
     {                                                                   \
       if (ctx->debug)                                                   \
-        if (SYM < 256)                                                  \
-          ctx->print ("Shifting '%c'\n", SYM);                          \
-        else                                                            \
-          ctx->print ("Shifting %s\n", xg__symbol_name [SYM - 256]);    \
+        {                                                               \
+          if (SYM < 256)                                                \
+            ctx->print ("Shifting '%c'\n", SYM);                        \
+          else                                                          \
+            ctx->print ("Shifting %s\n", xg__symbol_name [SYM - 256]);  \
+        }                                                               \
     }                                                                   \
   while (0)
 
@@ -158,12 +160,14 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
   do                                                                    \
     {                                                                   \
       if (ctx->debug)                                                   \
-        if (TOKEN == -1)                                                \
-          ctx->print ("Next token is <lexer-error>\n");                 \
-        else if (TOKEN < 256)                                           \
-          ctx->print ("Next token is '%c'\n", TOKEN);                   \
-        else                                                            \
-          ctx->print ("Next token is %s\n", xg__symbol_name [TOKEN - 256]); \
+        {                                                               \
+          if (TOKEN == -1)                                              \
+            ctx->print ("Next token is <lexer-error>\n");               \
+          else if (TOKEN < 256)                                         \
+            ctx->print ("Next token is '%c'\n", TOKEN);                 \
+          else                                                          \
+            ctx->print ("Next token is %s\n", xg__symbol_name [TOKEN - 256]); \
+        }                                                               \
     }                                                                   \
   while (0)
 
