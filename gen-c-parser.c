@@ -148,12 +148,23 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
     {
       /* Emit stack manipulation.  */
       state = xg_lr0dfa_get_state (dfa, i);
-      fprintf (out,
-               "shift_%u:\n"
-               "  XG__SHIFT;\n"
-               "push_%u:\n"
-               "  XG__PUSH (%u);\n\n",
-               i, i, i);
+
+      /* Only states, accessible by terminal symbols need to perform a
+         shift.  */
+      if (state->acc != XG_EPSILON
+          && xg_grammar_is_terminal_sym (g, state->acc))
+        {
+          fprintf (out,
+                   "shift_%u:\n"
+                   "  XG__SHIFT;\n",
+                   i);
+        }
+      else
+        /* States, accessible only by non-terminal symbols need a
+           label to jump to.  */
+        fprintf (out, "push_%u:\n", i);
+
+      fprintf (out, "  XG__PUSH (%u);\n\n", i);
 
       /* There's a single switch statement for shift and reduce
          actions.  */
@@ -266,7 +277,7 @@ xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa)
   m = xg_lr0dfa_trans_count (dfa);
   for (sym = XG_TOKEN_LITERAL_MAX + 1; sym < k; ++sym)
     {
-      if (xg_grammar_is_terminal_sym (g, sym))
+      if (xg_grammar_is_terminal_sym (g, sym) || sym == g->start)
         continue;
 
       fprintf (out, "symbol_%u:\n", sym);

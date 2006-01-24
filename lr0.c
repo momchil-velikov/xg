@@ -78,7 +78,10 @@ xg_lr0state_new ()
   xg_lr0state *state;
 
   if ((state = ulib_cache_alloc (lr0state_cache)) != 0)
-    return state;
+    {
+      state->acc = XG_EPSILON;
+      return state;
+    }
 
   ulib_log_printf (xg_log, "ERROR: Unable to allocate an LR(0) state");
   return 0;
@@ -508,6 +511,8 @@ lr0dfa_create (const xg_grammar *g, xg_lr0dfa *dfa)
                       || (nt = xg_lr0dfa_add_trans (dfa, sym, src->id, ns)) < 0
                       || xg_lr0state_add_trans (src, nt) < 0)
                     goto exit;
+
+                  dst->acc = sym;
 
                   if (sym == XG_EOF)
                     {

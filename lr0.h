@@ -74,6 +74,9 @@ struct xg_lr0state
   /* State id.  */
   unsigned int id;
 
+  /* Accessing symbol.  */
+  xg_sym acc;
+
   /* Accepting state flag.  */
   unsigned int accept : 1;
 
