@@ -209,13 +209,13 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
     }                                           \
   while (0)
 
-#define XG__PUSH(n)                             \
+#define XG__PUSH(N)                             \
   do                                            \
     {                                           \
-      state = n;                                \
-      XG__TRACE_PUSH (state);                   \
-      xg__stack_push (&stk, state);             \
+      XG__TRACE_PUSH (N);                       \
+      xg__stack_push (&stk, N);                 \
       XG__TRACE_STACK_DUMP ();                  \
+      state = N;                                \
     }                                           \
   while (0)
 
