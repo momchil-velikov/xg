@@ -256,7 +256,16 @@ main (int argc, const char *argv [])
     {
     }
   else
-    xg_gen_c_parser (out, g, dfa);
+    {
+      if (xg_gen_c_parser (out, g, dfa) < 0)
+        {
+          if (xg_output != 0)
+            {
+              fclose (out);
+              goto error;
+            }
+        }
+    }
 
   if (xg_output)
     fclose (out);
@@ -285,6 +294,8 @@ main (int argc, const char *argv [])
 
 error:
   sts = -1;
+  if (xg_output)
+    remove (xg_output);
 exit:
   if (dfa)
     xg_lr0dfa_del (dfa);
