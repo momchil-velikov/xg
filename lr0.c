@@ -80,6 +80,7 @@ xg_lr0state_new ()
   if ((state = ulib_cache_alloc (lr0state_cache)) != 0)
     {
       state->acc = XG_EPSILON;
+      state->accept = 0;
       return state;
     }
 
