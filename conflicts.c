@@ -147,7 +147,7 @@ resolve_shift_reduce_conflicts (const xg_grammar *g, xg_lr0dfa *dfa,
           continue;
         }
 
-      assert (tr->sym != XG_EOF && tr->sym != XG_EPSILON);
+      assert (tr->sym != XG_EPSILON);
 
       la = xg_grammar_get_symbol (g, tr->sym);
 
