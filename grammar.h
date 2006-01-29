@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with XG; if not, write to the Free Software Foundation,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 #ifndef xg__grammar_h
 #define xg__grammar_h 1
@@ -97,8 +97,11 @@ struct xg_symdef
 };
 typedef struct xg_symdef xg_symdef;
 
-/* Create a symbol definition.  */
+/* Create a symbol definition (consume the argument).  */
 xg_symdef *xg_symdef_new (char *name);
+
+/* Create a symbol definition (copy the argument).  */
+xg_symdef *xg_symdef_new_copy (const char *name);
 
 /* Add production N with DEF as its left hand side.  */
 int xg_symdef_add_prod (xg_symdef *def, unsigned int n);

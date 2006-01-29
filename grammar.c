@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with XG; if not, write to the Free Software Foundation,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 #include "grammar.h"
 #include "xg.h"
@@ -56,7 +56,7 @@ symdef_dtor (xg_symdef *def, unsigned int sz __attribute__ ((unused)))
 }
 
 
-/* Create a symbol definition.  */
+/* Create a symbol definition (consume the argument).  */
 xg_symdef *
 xg_symdef_new (char *name)
 {
@@ -74,6 +74,26 @@ xg_symdef_new (char *name)
     }
 
   ulib_log_printf (xg_log, "ERROR: Unable to allocate a symbol");
+  return 0;
+}
+
+/* Create a symbol definition (copy the argument).  */
+xg_symdef *
+xg_symdef_new_copy (const char *_name)
+{
+  char *name;
+  unsigned int n;
+  xg_symdef *def;
+
+  n = strlen (_name);
+  if ((name = xg_malloc (n + 1)) != 0)
+    {
+      memcpy (name, _name, n + 1);
+      if ((def = xg_symdef_new (name)) != 0)
+        return def;
+      xg_free (name);
+    }
+
   return 0;
 }
 
@@ -209,6 +229,7 @@ xg_grammar *
 xg_grammar_new ()
 {
   xg_grammar *g;
+  xg_symdef *rsv, *err, *eof, *eps;
 
   if ((g = xg_malloc (sizeof (xg_grammar))) != 0)
     {
@@ -216,11 +237,25 @@ xg_grammar_new ()
       (void) ulib_vector_init (&g->syms, ULIB_DATA_PTR_VECTOR, 0);
       if (ulib_vector_resize (&g->syms, XG_TOKEN_LITERAL_MAX + 1) == 0)
         {
-          (void) ulib_vector_init (&g->prods, ULIB_DATA_PTR_VECTOR, 0);
+          if ((rsv = xg_symdef_new_copy ("<reserved>")) != 0
+              && xg_grammar_add_symbol (g, rsv) == 0
+              && (err = xg_symdef_new_copy ("<error>")) != 0
+              && xg_grammar_add_symbol (g, err) == 0
+              && (eof = xg_symdef_new_copy ("<eof>")) != 0
+              && xg_grammar_set_symbol (g, XG_EOF, eof) == 0
+              && (eps = xg_symdef_new_copy ("<eps>")) != 0
+              && xg_grammar_set_symbol (g, XG_EPSILON, eps) == 0)
+            {
+              rsv->terminal = xg_explicit_terminal;
+              err->terminal = xg_explicit_terminal;
+              eof->terminal = xg_explicit_terminal;
+              eps->terminal = xg_explicit_terminal;
 
-          if (ulib_gcroot (g, (ulib_gcscan_func) grammar_gcscan) == 0)
-            return g;
+              (void) ulib_vector_init (&g->prods, ULIB_DATA_PTR_VECTOR, 0);
 
+              if (ulib_gcroot (g, (ulib_gcscan_func) grammar_gcscan) == 0)
+                return g;
+            }
           ulib_vector_destroy (&g->prods);
         }
       ulib_vector_destroy (&g->syms);
