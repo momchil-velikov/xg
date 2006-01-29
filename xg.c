@@ -305,6 +305,7 @@ exit:
   ulib_gcrun ();
 
   ulib_log_write (xg_log, stderr);
+  ulib_log_destroy (xg_log);
   return sts;
 }
 

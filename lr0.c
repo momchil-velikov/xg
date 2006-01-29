@@ -224,8 +224,14 @@ xg_lr0state_add_reduct (xg_lr0state *state, unsigned int prod)
 void
 xg_lr0state_del_reduct (xg_lr0state *state, unsigned int n)
 {
+  xg_lr0reduct *rd;
+
   if (n < ulib_vector_length (&state->rd))
-    ulib_vector_remove (&state->rd, n);
+    {
+      rd = ulib_vector_elt (&state->rd, n);
+      ulib_bitset_destroy (&rd->la);
+      ulib_vector_remove (&state->rd, n);
+    }
 }
 
 /* Get the number of reductions.  */
