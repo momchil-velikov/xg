@@ -9,4 +9,3 @@ A :   a B b
 
 B : d ;
 
-/* arch-tag: e1fdee24-d21b-4969-9a43-336d9b9be4af */

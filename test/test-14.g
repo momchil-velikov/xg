@@ -24,4 +24,3 @@ expr :
     |   expr '.' 'i'
     ;
 
-/* arch-tag: be9892ec-a4e6-4713-904b-d7804b7efa24 */

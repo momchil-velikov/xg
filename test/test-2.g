@@ -23,4 +23,3 @@ args : expr
 
 %start expr ;
 
-/* arch-tag: de7e1e00-3af9-4cef-a73d-c1aa5bac6518 */

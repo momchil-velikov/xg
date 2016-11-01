@@ -343,7 +343,6 @@ error:
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 4ae49fbc-f2ad-4060-b817-31d27994977e
  * End:
  */
 

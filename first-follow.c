@@ -218,6 +218,5 @@ xg_nullable_form (const xg_grammar *g, unsigned int n, const xg_sym *form)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 03a2d870-d4f5-4f37-9d92-cb4a2381dd2a
  * End:
  */

@@ -507,6 +507,5 @@ xg__init_lalr (void)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 1929ef8d-8aeb-462f-9e81-72a5641bbfb6
  * End:
  */

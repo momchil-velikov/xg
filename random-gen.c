@@ -129,6 +129,5 @@ xg_make_random_sentence (FILE *out, const xg_grammar *g, unsigned int size,
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 52d0f852-95ea-4238-b901-5c575fa6635c
  * End:
  */

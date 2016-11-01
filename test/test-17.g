@@ -557,4 +557,3 @@ declaration_list :
     |   declaration_list declaration
     ;
 
-/* arch-tag: f2fbf4a7-f4c7-415e-bbf3-401f992dda4c */

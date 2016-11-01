@@ -313,6 +313,5 @@ exit:
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 1c5b50b4-ff60-4a95-a943-365b67baf14a
  * End:
  */

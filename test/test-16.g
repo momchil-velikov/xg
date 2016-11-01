@@ -23,4 +23,3 @@ expr : '(' expr ')'
     | ID
     ;
 
-/* arch-tag: b57a257f-fc39-4a93-a439-53d190e0cca7 */

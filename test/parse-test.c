@@ -79,6 +79,5 @@ main ()
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: e8968f02-18e7-4228-86da-cfb0ab198a52
  * End:
  */

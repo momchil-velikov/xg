@@ -586,6 +586,5 @@ xg_grammar_debug (FILE *out, const xg_grammar *g)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: e85aaa11-d93a-414f-8851-eaca42e8404e
  * End:
  */

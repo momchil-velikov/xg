@@ -267,6 +267,5 @@ xg__stack_dump (const xg_parse_ctx *ctx, const xg__stack *stk)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 2b10c430-4a16-42f7-ab1b-71f035cf73ec
  * End:
  */

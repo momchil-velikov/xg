@@ -757,6 +757,5 @@ xg__init_lr0dfa ()
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 11160ca5-723b-49b2-a94c-8d4b3919b35b
  * End:
  */

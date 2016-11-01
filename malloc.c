@@ -60,6 +60,5 @@ xg_realloc (void *oldptr, size_t sz)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 5e130ebe-7346-4caf-9805-e331f49d2d9a
  * End:
  */

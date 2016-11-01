@@ -273,6 +273,5 @@ xg_resolve_conflicts (const xg_grammar *g, xg_lr0dfa *dfa)
  * Local variables:
  * mode: C
  * indent-tabs-mode: nil
- * arch-tag: 8bc469cd-c898-4a08-9238-4939523ef262
  * End:
  */
