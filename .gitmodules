@@ -1,0 +1,3 @@
+[submodule "ulib"]
+	path = ulib
+	url = git@github.com:momchil-velikov/ulib.git
