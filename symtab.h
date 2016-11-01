@@ -31,20 +31,20 @@ BEGIN_DECLS
 typedef ulib_hash xg_symtab;
 
 /* Initialize a symbol table.  */
-int xg_symtab_init (xg_symtab *);
+int xg_symtab_init(xg_symtab *);
 
 /* Destroy a symbol table. */
-void xg_symtab_destroy (xg_symtab *);
+void xg_symtab_destroy(xg_symtab *);
 
 /* Insert a symbol to the symbol table.  */
-void xg_symtab_insert (xg_symtab *, xg_symdef *);
+void xg_symtab_insert(xg_symtab *, xg_symdef *);
 
 /* Find a symbol in the symbol table.  */
-xg_symdef *xg_symtab_lookup (const xg_symtab *, const char *);
+xg_symdef *xg_symtab_lookup(const xg_symtab *, const char *);
 
 END_DECLS
 #endif /* xg__symtab_h */
-
+
 /*
  * Local variables:
  * mode: C

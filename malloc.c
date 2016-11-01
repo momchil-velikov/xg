@@ -21,41 +21,38 @@
 #include "xg.h"
 
 void *
-xg_malloc (size_t sz)
-{
-  void *ptr;
+xg_malloc(size_t sz) {
+    void *ptr;
 
-  ptr = malloc (sz);
-  if (ptr == 0 && sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) sz);
-  return ptr;
+    ptr = malloc(sz);
+    if (ptr == 0 && sz != 0)
+        ulib_log_printf(
+            xg_log, "ERROR: Out of memory allocating %lu bytes", (unsigned long)sz);
+    return ptr;
 }
 
 void *
-xg_calloc (size_t n, size_t sz)
-{
-  void *ptr;
-  
-  ptr = calloc (n, sz);
-  if (ptr == 0 && n * sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) n * sz);
-  return ptr;
+xg_calloc(size_t n, size_t sz) {
+    void *ptr;
+
+    ptr = calloc(n, sz);
+    if (ptr == 0 && n * sz != 0)
+        ulib_log_printf(
+            xg_log, "ERROR: Out of memory allocating %lu bytes", (unsigned long)n * sz);
+    return ptr;
 }
 
 void *
-xg_realloc (void *oldptr, size_t sz)
-{
-  void *ptr;
+xg_realloc(void *oldptr, size_t sz) {
+    void *ptr;
 
-  ptr = realloc (oldptr, sz);
-  if (ptr == 0 && sz != 0)
-    ulib_log_printf (xg_log, "ERROR: Out of memory allocating %lu bytes",
-                     (unsigned long) sz);
-  return ptr;
+    ptr = realloc(oldptr, sz);
+    if (ptr == 0 && sz != 0)
+        ulib_log_printf(
+            xg_log, "ERROR: Out of memory allocating %lu bytes", (unsigned long)sz);
+    return ptr;
 }
-
+
 /*
  * Local variables:
  * mode: C

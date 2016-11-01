@@ -28,26 +28,25 @@
 BEGIN_DECLS
 
 /* LALR(1) transition.  */
-struct xg_lalr_trans
-{
-  /* Related LALR transitions.  */
-  ulib_vector rel;
+struct xg_lalr_trans {
+    /* Related LALR transitions.  */
+    ulib_vector rel;
 
-  /* Function value.  */
-  ulib_bitset value;
+    /* Function value.  */
+    ulib_bitset value;
 };
 typedef struct xg_lalr_trans xg_lalr_trans;
 
 /* Create reductions for an LALR(1) parser.  */
-int xg_make_lalr_reductions (const xg_grammar *g, xg_lr0dfa *dfa);
+int xg_make_lalr_reductions(const xg_grammar *g, xg_lr0dfa *dfa);
 
 /* Initialized the LALR(1) memory management.  */
-int xg__init_lalr (void);
+int xg__init_lalr(void);
 
 END_DECLS
 
 #endif /* xg__lalr_h */
-
+
 /*
  * Local variables:
  * mode: C

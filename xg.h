@@ -30,15 +30,18 @@ BEGIN_DECLS
 extern ulib_log *xg_log;
 
 /* Logging memory allocation functions.  */
-void *xg_malloc (size_t);
-void *xg_calloc (size_t, size_t);
-void *xg_realloc (void *, size_t);
-static inline void xg_free (void *ptr) { free (ptr); }
+void *xg_malloc(size_t);
+void *xg_calloc(size_t, size_t);
+void *xg_realloc(void *, size_t);
+static inline void
+xg_free(void *ptr) {
+    free(ptr);
+}
 
 END_DECLS
 
 #endif /*  xg__xg_h */
-
+
 /*
  * Local variables:
  * mode: C

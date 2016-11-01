@@ -26,11 +26,11 @@
 BEGIN_DECLS
 
 /* Generate a SLR(1) or LALR(1) parser in ISO C.  */
-int xg_gen_c_parser (FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
+int xg_gen_c_parser(FILE *out, const xg_grammar *g, const xg_lr0dfa *dfa);
 
 END_DECLS
 #endif /* xg_gen_c_slr_h */
-
+
 /*
  * Local variables:
  * mode: C
