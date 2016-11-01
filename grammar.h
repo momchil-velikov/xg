@@ -21,7 +21,6 @@
 #ifndef xg__grammar_h
 #define xg__grammar_h 1
 
-#include <ulib/defs.h>
 #include <ulib/vector.h>
 #include <ulib/list.h>
 #include <ulib/bitset.h>

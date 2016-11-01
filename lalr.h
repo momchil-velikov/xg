@@ -22,8 +22,6 @@
 #ifndef xg__lalr_h
 #define xg__lalr_h 1
 
-#include <ulib/defs.h>
-
 #include "lr0.h"
 #include <ulib/vector.h>
 

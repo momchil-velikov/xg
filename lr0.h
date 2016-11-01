@@ -23,7 +23,6 @@
 #define xg__lr0_h 1
 
 #include "grammar.h"
-#include <ulib/defs.h>
 #include <ulib/vector.h>
 #include <stdio.h>
 

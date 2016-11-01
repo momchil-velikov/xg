@@ -21,7 +21,6 @@
 #ifndef xg_gen_c_slr_h
 #define xg_gen_c_slr_h 1
 
-#include <ulib/defs.h>
 #include "lr0.h"
 
 BEGIN_DECLS

@@ -21,7 +21,6 @@
 #ifndef xg__xg_h
 #define xg__xg_h 1
 
-#include <ulib/defs.h>
 #include <ulib/log.h>
 #include <stdlib.h>
 

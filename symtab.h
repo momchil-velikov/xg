@@ -21,7 +21,6 @@
 #ifndef xg__symtab_h
 #define xg__symtab_h 1
 
-#include <ulib/defs.h>
 #include <ulib/hash.h>
 
 #include "grammar.h"
