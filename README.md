@@ -1,6 +1,6 @@
 # xg
 
-`xg` is and SLR(1) and LALR(1) parser generator for directly executable (as opposed to table-driven) parsers.
+`xg` is an SLR(1) and LALR(1) parser generator for directly executable (as opposed to table-driven) parsers.
 
 #### References
 
